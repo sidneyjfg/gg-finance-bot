@@ -128,7 +128,7 @@ SELECT * FROM transactions WHERE user_id = ?;
 ### 3 — WhatsApp
 - [ ] Criar app no Meta
 - [ ] Configurar webhook e verificar token
-- [ ] Receber e enviar mensagens
+- [x] Receber e enviar mensagens
 
 ### 4 — Bot
 - [ ] Identificar intenção (gasto, receita, saldo, relatório)

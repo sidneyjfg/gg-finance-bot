@@ -34,7 +34,7 @@ export function startWhatsAppBot() {
       console.log("📵 Mensagem de Suzy ignorada.");
       return;
     }
-    if (msg.from.includes("554192124976@c.us")) {
+    if (msg.from.includes("554196987208@c.us")) {
       console.log("📵 Mensagem de Outros ignorada.");
       return;
     }

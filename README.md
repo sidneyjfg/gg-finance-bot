@@ -142,70 +142,82 @@ SELECT * FROM transactions WHERE user_id = ?;
 
 ---
 
-## 🧩 Modelagem do Banco de Dados (MySQL)
+🧩 Modelagem do Banco de Dados (MySQL)
 
-### users
+### usuarios
 ```sql
-id (PK, UUID)
-phone (unique)
-name (nullable)
-created_at
+id VARCHAR(36) PRIMARY KEY,
+telefone VARCHAR(255) UNIQUE NOT NULL,
+nome VARCHAR(255) NULL,
+cpf_cnpj VARCHAR(20) NULL,
+criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
 ```
 
-### categories
+### categorias
 ```sql
-id (PK, UUID)
-user_id (FK)
-name
-type (income | expense)
-icon (nullable)
-color (nullable)
-created_at
+id VARCHAR(36) PRIMARY KEY,
+usuario_id VARCHAR(36) NOT NULL,
+nome VARCHAR(255) NOT NULL,
+tipo ENUM('receita', 'despesa'),
+icone VARCHAR(255) NULL,
+cor VARCHAR(50) NULL,
+criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 ```
 
-### transactions
+### transacoes
 ```sql
-id (PK, UUID)
-user_id (FK)
-category_id (FK)
-type (income | expense)
-amount (decimal)
-description
-date
-is_recurring
-created_at
+id VARCHAR(36) PRIMARY KEY,
+usuario_id VARCHAR(36) NOT NULL,
+categoria_id VARCHAR(36) NULL,
+tipo ENUM('receita', 'despesa'),
+valor DECIMAL(10,2) NOT NULL,
+descricao VARCHAR(255) NULL,
+data DATETIME NOT NULL,
+recorrente BOOLEAN DEFAULT false,
+criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+FOREIGN KEY (categoria_id) REFERENCES categorias(id)
 ```
 
-### recurrences
+### recorrencias
 ```sql
-id (PK, UUID)
-user_id (FK)
-transaction_id (FK)
-frequency (daily|weekly|monthly|yearly)
-interval_value
-next_charge_date
+id VARCHAR(36) PRIMARY KEY,
+usuario_id VARCHAR(36) NOT NULL,
+transacao_id VARCHAR(36) UNIQUE NOT NULL,
+frequencia ENUM('diaria', 'semanal', 'mensal', 'anual'),
+intervalo INT DEFAULT 1,
+proxima_cobranca DATETIME NOT NULL,
+
+FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+FOREIGN KEY (transacao_id) REFERENCES transacoes(id)
 ```
 
-### reports
+### relatorios
 ```sql
-id (PK, UUID)
-user_id (FK)
-month
-total_income
-total_expense
-balance
-created_at
+id VARCHAR(36) PRIMARY KEY,
+usuario_id VARCHAR(36) NOT NULL,
+mes VARCHAR(7) NOT NULL,
+total_receitas DECIMAL(10,2) NOT NULL,
+total_despesas DECIMAL(10,2) NOT NULL,
+saldo DECIMAL(10,2) NOT NULL,
+criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 ```
 
 ### bot_logs
 ```sql
-id (PK, UUID)
-user_id (FK)
-intent
-message_preview
-created_at
-```
+id VARCHAR(36) PRIMARY KEY,
+usuario_id VARCHAR(36) NOT NULL,
+intencao VARCHAR(255) NOT NULL,
+mensagem VARCHAR(255) NULL,
+criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
 
+FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+```
 ---
 
 ## 💬 Exemplos de Conversas com o Bot

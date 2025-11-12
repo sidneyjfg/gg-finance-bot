@@ -1,15 +1,96 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        String      @id @default(uuid())
+  telefone  String      @unique
+  nome      String?
+  cpfCnpj   String?
+  criadoEm  DateTime    @default(now())
+  categorias Categoria[]
+  transacoes Transacao[]
+  recorrencias Recorrencia[]
+  relatorios  Relatorio[]
+  logs        LogBot[]
+}
+
+model Categoria {
+  id         String   @id @default(uuid())
+  usuarioId  String
+  nome       String
+  tipo       TipoTransacao
+  icone      String?
+  cor        String?
+  criadoEm   DateTime @default(now())
+
+  usuario    Usuario @relation(fields: [usuarioId], references: [id])
+  transacoes Transacao[]
+}
+
+model Transacao {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  categoriaId String?
+  tipo        TipoTransacao
+  valor       Decimal  @db.Decimal(10, 2)
+  descricao   String?
+  data        DateTime
+  recorrente  Boolean  @default(false)
+  criadoEm    DateTime @default(now())
+
+  usuario     Usuario      @relation(fields: [usuarioId], references: [id])
+  categoria   Categoria?   @relation(fields: [categoriaId], references: [id])
+  recorrencia Recorrencia?
+}
+
+model Recorrencia {
+  id           String   @id @default(uuid())
+  usuarioId    String
+  transacaoId  String   @unique
+  frequencia   Frequencia
+  intervalo    Int      @default(1)
+  proximaCobra DateTime
+
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id])
+  transacao  Transacao @relation(fields: [transacaoId], references: [id])
+}
+
+model Relatorio {
+  id            String   @id @default(uuid())
+  usuarioId     String
+  mes           String   @db.VarChar(7)
+  totalReceitas Decimal  @db.Decimal(10, 2)
+  totalDespesas Decimal  @db.Decimal(10, 2)
+  saldo         Decimal  @db.Decimal(10, 2)
+  criadoEm      DateTime @default(now())
+
+  usuario       Usuario @relation(fields: [usuarioId], references: [id])
+}
+
+model LogBot {
+  id        String   @id @default(uuid())
+  usuarioId String
+  intencao  String
+  mensagem  String   @db.VarChar(255)
+  criadoEm  DateTime @default(now())
+
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+}
+
+enum TipoTransacao {
+  receita
+  despesa
+}
+
+enum Frequencia {
+  diaria
+  semanal
+  mensal
+  anual
 }

@@ -11,6 +11,8 @@ import { AgendamentoHandler } from "../services/handlers/AgendamentoHandler";
 import { EditarTransacaoHandler } from "../services/handlers/EditarTransacaoHandler";
 import { ExcluirTransacaoHandler } from "../services/handlers/ExcluirTransacaoHandler";
 
+import { RecorrenciaHandler } from "../services/handlers/RecorrenciaHandler";
+
 import { RelatorioHandler } from "../services/handlers/RelatorioHandler";
 import { PerfilHandler } from "../services/handlers/PerfilHandler";
 import { CadastroUsuarioHandler } from "../services/handlers/CadastroUsuarioHandler";
@@ -27,6 +29,15 @@ export class AssistenteFinanceiro {
     const usuario = await UsuarioRepository.buscarPorTelefone(telefone);
     const contexto = await ContextoRepository.obter(telefone);
 
+    // 0) Se o usuário já existe e não há fluxo em andamento → saudação curta
+    if (usuario && !contexto) {
+      await EnviadorWhatsApp.enviar(
+        telefone,
+        `👋 Olá, *${usuario.nome?.split(" ")[0] || "tudo bem"}*! Como posso te ajudar hoje?`
+      );
+    }
+
+    // 1) Se há etapa em andamento → continuar fluxo normal
     // 1) Se há etapa em andamento → continuar fluxo normal
     if (contexto) {
       const etapa = contexto.etapa;
@@ -52,7 +63,6 @@ export class AssistenteFinanceiro {
           return EditarTransacaoHandler.selecionar(telefone, mensagem);
 
         case "editar_transacao_opcao":
-
           if (mensagem.startsWith("1"))
             return EditarTransacaoHandler.editarValor(telefone, Number(mensagem));
 
@@ -66,6 +76,7 @@ export class AssistenteFinanceiro {
           return ExcluirTransacaoHandler.executar(telefone, mensagem);
       }
     }
+    
 
     // 2) 🔒 GATE DE CADASTRO:
     //    Se ainda não tem usuário, NÃO usa IA pra interpretar intenção nem pra resposta.
@@ -132,7 +143,8 @@ export class AssistenteFinanceiro {
           telefone,
           usuario!.id,
           intent.mensagem,
-          intent.data
+          intent.data,
+          intent.valor ?? null   // adiciona o valor
         );
 
       case "criar_recorrencia":

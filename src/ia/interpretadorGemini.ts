@@ -10,25 +10,26 @@ export class InterpretadorGemini {
     const prompt = `
 Você é o interpretador oficial do Assistente Financeiro no WhatsApp.
 
-Sua função é:
-👉 Identificar a intenção do usuário
-👉 Extrair valores, categorias, datas e informações úteis
-👉 Ser tolerante com erros de digitação e frases incompletas
-👉 Retornar SOMENTE JSON válido. Nada fora do JSON.
+Sua missão:
+→ Identificar a INTENÇÃO REAL do usuário
+→ Extrair valores, categorias, datas e informações úteis
+→ Ser tolerante com erros de digitação e frases incompletas
+→ Retornar SOMENTE JSON válido (sem comentários, sem texto, sem explicações)
 
-⚠️ MUITO IMPORTANTE:
-- NÃO escreva explicações.
-- NÃO escreva textos fora do JSON.
-- NÃO use comentários.
-- NÃO use formato inválido.
+IMPORTANTE:
+- Proibido retornar qualquer coisa fora do JSON.
+- Proibido adicionar textos, explicações ou markdown.
+- Sempre retornar um JSON 100% válido.
 - Se não souber a intenção, retorne:
-{ "acao": "desconhecido" }
+  { "acao": "desconhecido" }
 
-───────────────────────────────
+────────────────────────────────────────
 📌 INTENÇÕES SUPORTADAS
-───────────────────────────────
+────────────────────────────────────────
 
-### 1) Registrar Receita
+###############################################################
+# 1) Registrar Receita
+###############################################################
 {
   "acao": "registrar_receita",
   "valor": number,
@@ -38,13 +39,16 @@ Sua função é:
   "dataAgendada": string | null
 }
 
-Aceitar:
+Reconhecer frases como:
 - "ganhei 150 freelas"
 - "coloca ai +200"
 - "vou receber 3200 no dia 25"
-- "quero registrar receita"
+- "recebi salário"
+- "registrar receita"
 
-### 2) Registrar Despesa
+###############################################################
+# 2) Registrar Despesa
+###############################################################
 {
   "acao": "registrar_despesa",
   "valor": number,
@@ -56,11 +60,14 @@ Aceitar:
 
 Aceitar:
 - "gastei 50 no mercado"
-- "paga boleto amanhã 23/02"
+- "paga boleto amanhã"
 - "despesa 150 cartão"
-- "quero adicionar despesa"
+- "gastei 200"
+- "registrar despesa"
 
-### 3) Criar Categoria
+###############################################################
+# 3) Criar Categoria
+###############################################################
 {
   "acao": "criar_categoria",
   "nome": string | null,
@@ -69,10 +76,12 @@ Aceitar:
 
 Aceitar:
 - "criar categoria mercado"
-- “nova categoria salário de receita”
-- “quero adicionar categoria”
+- "nova categoria salário de receita"
+- "categoria gasolina"
 
-### 4) Lembretes
+###############################################################
+# 4) Lembretes (APENAS coisas pontuais)
+###############################################################
 {
   "acao": "criar_lembrete",
   "mensagem": string | null,
@@ -81,26 +90,62 @@ Aceitar:
   "categoria": string | null
 }
 
-Aceitar:
-- "me lembra de pagar o aluguel dia 10"(apenas exemplo entenda tudo que é relacionado a lembretes)
-- "me lembra de pagar meu aluguel de 1000 reais dia 20"(apenas exemplo entenda tudo que é relacionado a lembretes)
-- "quero uma notificação pra lembrar da conta de luz de 250 amanhã"(apenas exemplo entenda tudo que é relacionado a lembretes)
-- "avise amanhã pra enviar fatura"(apenas exemplo entenda tudo que é relacionado a lembretes)
+REGRAS PARA LEMBRETE:
+→ Lembrete é **não repetitivo**
+→ Se for algo pontual: "amanhã", "dia 10", "20/02", "mês que vem", "daqui 3 dias"
 
+Exemplos:
+- "me lembra de pagar o aluguel dia 10"
+- "me avisa amanhã de depositar 50 reais"
+- "coloca um lembrete pro dia 20"
+- "avise amanhã pra enviar a fatura"
 
-### 5) Recorrências
+###############################################################
+# 5) Recorrências (qualquer coisa repetitiva)
+###############################################################
 {
   "acao": "criar_recorrencia",
-  "valor": number,
+  "valor": number | null,
   "descricao": string | null,
-  "frequencia": "diaria" | "semanal" | "mensal" | "anual" | null
+  "frequencia": "diaria" | "semanal" | "mensal" | "anual" | null,
+  "data": number | null   // se for mensal e tiver dia fixo, ex: 15
 }
 
-Aceitar:
-- "aluguel 1500 mensal"
-- “colocar despesa recorrente”
+REGRAS PARA RECORRÊNCIA:
+→ Sempre que houver palavras indicando repetição:
 
-### 6) Edição
+Frequência diária:
+- todo dia
+- diariamente
+- dia a dia
+- todos os dias
+
+Frequência semanal:
+- todo domingo
+- toda segunda
+- semanal
+- toda semana
+
+Frequência mensal:
+- mensal
+- mensalmente
+- todo mês
+- todo dia 5
+- todo dia 10
+
+Frequência anual:
+- todo ano
+- anualmente
+
+Exemplos:
+- "aluguel 1500 mensal"
+- "todo mês pagar 200 da internet"
+- "todo dia 5 lembrar do cartão"
+- "quero colocar uma despesa recorrente"
+
+###############################################################
+# 6) Editar Transação
+###############################################################
 {
   "acao": "editar_transacao",
   "id": string | null,
@@ -108,28 +153,27 @@ Aceitar:
   "novoValor": string | number | null
 }
 
-Aceitar:
-- "editar transação 123"
-- "quero mudar o valor da despesa"
-- "corrigir descrição"
-
-### 7) Exclusão
+###############################################################
+# 7) Exclusão
+###############################################################
 {
   "acao": "excluir_transacao",
   "id": string | null
 }
 
-Aceitar:
-- "excluir 123"
-- "apaga a despesa do mercado"
-
-### 8) Ver saldo
+###############################################################
+# 8) Ver saldo
+###############################################################
 { "acao": "ver_saldo" }
 
-### 9) Ver perfil
+###############################################################
+# 9) Ver perfil
+###############################################################
 { "acao": "ver_perfil" }
 
-### 10) Cadastro
+###############################################################
+# 10) Cadastro
+###############################################################
 {
   "acao": "cadastrar_usuario",
   "dados": {
@@ -138,46 +182,52 @@ Aceitar:
   }
 }
 
-Aceitar:
-- "meu nome é João Pereira"
-- "cpf 12345678901"
-
-### 11) Ajuda
+###############################################################
+# 11) Ajuda
+###############################################################
 { "acao": "ajuda" }
 
-### 12) Desconhecido
+###############################################################
+# 12) Desconhecido
+###############################################################
 { "acao": "desconhecido" }
 
-───────────────────────────────
-📌 REGRAS DE INTERPRETAÇÃO
-───────────────────────────────
+────────────────────────────────────────
+📌 REGRAS DE EXTRAÇÃO
+────────────────────────────────────────
 
-✔ Identifique valores mesmo com erros:
-"50", "50,90", "R$50", "50reais", "ganhei5mil"
+✔ Extrair valores mesmo com erros:
+- 50
+- 50,90
+- R$50
+- 50reais
+- 5mil
+- 3.200,00
 
-✔ Extraia datas:
-"amanhã", "depois de amanhã", "dia 23", "25/02/2025"
+✔ Extração de datas naturais:
+- amanhã
+- depois de amanhã
+- dia 23
+- 25/02/2025
+- 20 de novembro
+- mês que vem
+- daqui 3 dias
 
-✔ Compreenda escrita natural:
-"quero adicionar uma receita", “coloca isso ai como despesa”
+✔ Compreender escrita natural:
+- "coloca isso ai como receita"
+- "anota pra mim gastei 200"
+- "me lembra de pagar o boleto"
 
-✔ Entenda frases incompletas:
-"gastei 50" → despesa
-"ganhei 200" → receita
-
-✔ Extraia descrição:
-“mercado”, “aluguel”, “pix joana”
-
-✔ Se estiver incompleto:
+✔ Se a frase estiver incompleta:
 retorne:
 { "acao": "desconhecido" }
 
-───────────────────────────────
+────────────────────────────────────────
 📩 MENSAGEM DO USUÁRIO:
 "${mensagem}"
 
-───────────────────────────────
-Agora retorne apenas o JSON.
+────────────────────────────────────────
+Agora retorne APENAS o JSON.
 `;
 
     const resposta = await modelo.generateContent(prompt);

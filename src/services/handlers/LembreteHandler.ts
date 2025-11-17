@@ -1,94 +1,143 @@
-// services/handlers/LembreteHandler.ts
 import { LembreteRepository } from "../../repositories/lembrete.repository";
 import { ContextoRepository } from "../../repositories/contexto.repository";
 import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
 
 export class LembreteHandler {
 
-  // Agora ele aceita mensagem + data opcionais vindas da IA
+  // Agora aceita mensagem + data + valor opcionais vindos da IA
   static async iniciar(
     telefone: string,
     usuarioId: string,
-    mensagemIA?: string | null,
-    dataIA?: string | null
+    mensagem: string | null,
+    data: string | null,
+    valor: number | null = null
   ) {
-    // ✅ Caso 1: IA já entendeu mensagem + data → tenta criar direto
-    if (mensagemIA && dataIA) {
-      const data = parseDataPtBr(dataIA);
 
-      if (data) {
-        await LembreteRepository.criar({
-          usuarioId,
-          mensagem: mensagemIA,
-          dataAlvo: data
-        });
+    // Se mensagem, valor e data estão completos → salvar direto
+    if (mensagem && data && valor !== null) {
+      return this.salvarCompleto(telefone, usuarioId, mensagem, data, valor);
+    }
 
-        return EnviadorWhatsApp.enviar(
-          telefone,
-          "⏰ Lembrete criado com sucesso!\n\n" +
-          `📝 ${mensagemIA}\n` +
-          `📅 Data: ${data.toLocaleDateString("pt-BR")}`
-        );
-      }
+    // Tem mensagem + valor → falta data
+    if (mensagem && valor !== null && !data) {
+      await ContextoRepository.salvar(telefone, {
+        etapa: "criando_lembrete_data",
+        dados: { mensagem, valor }
+      });
 
-      // Se a data vier num formato estranho, avisa e cai pro fluxo guiado
-      await EnviadorWhatsApp.enviar(
+      return EnviadorWhatsApp.enviar(
         telefone,
-        "📆 Entendi o lembrete, mas não consegui interpretar a data.\n" +
-        "Vou te perguntar direitinho agora pra garantir, beleza?"
+        "📅 Você não informou *quando* devo te lembrar disso.\nQual é a data do lembrete?"
       );
     }
 
-    // ✅ Caso 2: IA não trouxe tudo → entra no fluxo passo a passo
-    await ContextoRepository.salvar(telefone, "criando_lembrete_texto");
+    // Tem mensagem + data → falta valor
+    if (mensagem && data && valor === null) {
+      await ContextoRepository.salvar(telefone, {
+        etapa: "criando_lembrete_valor",
+        dados: { mensagem, data }
+      });
+
+      return EnviadorWhatsApp.enviar(
+        telefone,
+        "💰 Você não informou o *valor*. Quer deixar sem valor ou deseja informar agora?"
+      );
+    }
+
+    // Tem só mensagem
+    if (mensagem && !data) {
+      await ContextoRepository.salvar(telefone, {
+        etapa: "criando_lembrete_data",
+        dados: { mensagem, valor }
+      });
+
+      return EnviadorWhatsApp.enviar(
+        telefone,
+        "📅 Quando você quer que eu te lembre disso?"
+      );
+    }
+
+    // Tem só data
+    if (data && !mensagem) {
+      await ContextoRepository.salvar(telefone, {
+        etapa: "criando_lembrete_texto",
+        dados: { data, valor }
+      });
+
+      return EnviadorWhatsApp.enviar(
+        telefone,
+        "💭 O que você quer que eu te lembre?"
+      );
+    }
+
+    // Nada válido → inicia fluxo padrão
+    await ContextoRepository.salvar(telefone, {
+      etapa: "criando_lembrete_texto"
+    });
 
     return EnviadorWhatsApp.enviar(
       telefone,
-      "💭 O que você quer que eu te lembre?\n\n" +
-      "Exemplo: *pagar a faculdade de 280 reais*"
+      "💭 O que você quer que eu te lembre?"
     );
   }
 
-  // 1ª etapa do fluxo manual: texto do lembrete
+  // Salvar lembrete direto
+  static async salvarCompleto(
+    telefone: string,
+    usuarioId: string,
+    mensagem: string,
+    data: string,
+    valor: number | null
+  ) {
+
+    await LembreteRepository.criar({
+      usuarioId,
+      mensagem,
+      data,
+      valor
+    });
+
+    await ContextoRepository.limpar(telefone);
+
+    return EnviadorWhatsApp.enviar(
+      telefone,
+      `🔔 Prontinho! Vou te lembrar: *${mensagem}* no dia *${data}*${valor !== null ? ` (R$ ${valor})` : ""}.`
+    );
+  }
+
+  // Fluxo manual — texto
   static async salvarTexto(telefone: string, texto: string) {
     await ContextoRepository.atualizarDados(telefone, { texto });
-    await ContextoRepository.salvar(telefone, "criando_lembrete_data");
+
+    await ContextoRepository.salvar(telefone, {
+      etapa: "criando_lembrete_data",
+      dados: { texto }
+    });
 
     return EnviadorWhatsApp.enviar(
       telefone,
-      "📆 Quando devo te lembrar? (ex: 20/11/2025 ou 20/11)"
+      "📆 Quando devo te lembrar? (ex: 20/11 ou 20/11/2025)"
     );
   }
 
-  // 2ª etapa do fluxo manual: data do lembrete
-  static async salvarData(telefone: string, dataHoraMsg: string, usuarioId: string) {
+  // Fluxo manual — data
+  static async salvarData(telefone: string, dataMsg: string, usuarioId: string) {
     const ctx = await ContextoRepository.obter(telefone);
 
-    if (!ctx || !ctx.dados) {
+    if (!ctx || !ctx.dados || !ctx.dados.texto) {
       return EnviadorWhatsApp.enviar(
         telefone,
-        "⚠️ Não encontrei o texto do lembrete.\n" +
-        "Vamos começar de novo? Me diga o que você quer lembrar."
+        "⚠️ Não encontrei o texto do lembrete.\nVamos começar de novo? O que você quer lembrar?"
       );
     }
 
-    const { texto } = ctx.dados as { texto?: string };
+    const texto = ctx.dados.texto;
 
-    if (!texto) {
-      return EnviadorWhatsApp.enviar(
-        telefone,
-        "⚠️ Não encontrei o texto do lembrete.\n" +
-        "Vamos começar de novo? Me diga o que você quer lembrar."
-      );
-    }
-
-    const data = parseDataPtBr(dataHoraMsg);
-
+    const data = parseDataPtBr(dataMsg);
     if (!data) {
       return EnviadorWhatsApp.enviar(
         telefone,
-        "❌ Não consegui entender essa data.\n" +
-        "Tente algo como *20/11/2025* ou *20/11*."
+        "❌ Não consegui entender essa data.\nTente *20/11* ou *20/11/2025*."
       );
     }
 
@@ -107,55 +156,36 @@ export class LembreteHandler {
   }
 }
 
-// Helper: tenta entender datas em formatos comuns em PT-BR
+
+// Conversão de datas
 function parseDataPtBr(texto: string): Date | null {
   if (!texto) return null;
   texto = texto.trim();
 
-  // 1) Primeiro tenta o parser nativo (pra ISO, "2025-11-20", etc.)
   const direto = new Date(texto);
   if (!isNaN(direto.getTime())) return direto;
 
-  // 2) Formato DD/MM ou DD/MM/AAAA
   const m1 = texto.match(/^(\d{1,2})[\/\-](\d{1,2})([\/\-](\d{2,4}))?$/);
   if (m1) {
     const dia = Number(m1[1]);
     const mes = Number(m1[2]) - 1;
     const ano = m1[3] ? Number(m1[3].replace(/[\/\-]/, "")) : new Date().getFullYear();
-
     const d = new Date(ano, mes, dia);
     if (!isNaN(d.getTime())) return d;
   }
 
-  // 3) Formato "20 de novembro", "20 novembro 2025", etc.
   const meses: Record<string, number> = {
-    janeiro: 0,
-    fevereiro: 1,
-    marco: 2,
-    março: 2,
-    abril: 3,
-    maio: 4,
-    junho: 5,
-    julho: 6,
-    agosto: 7,
-    setembro: 8,
-    outubro: 9,
-    novembro: 10,
-    dezembro: 11
+    janeiro: 0, fevereiro: 1, marco: 2, março: 2, abril: 3, maio: 4,
+    junho: 5, julho: 6, agosto: 7, setembro: 8, outubro: 9, novembro: 10, dezembro: 11
   };
 
   const m2 = texto.match(
     /(\d{1,2}).*?(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:.*?(\d{4}))?/i
   );
-
   if (m2) {
     const dia = Number(m2[1]);
-    const mesNome = m2[2].toLowerCase();
+    const mes = meses[m2[2].toLowerCase()];
     const ano = m2[3] ? Number(m2[3]) : new Date().getFullYear();
-
-    const mes = meses[mesNome];
-    if (mes === undefined) return null;
-
     const d = new Date(ano, mes, dia);
     if (!isNaN(d.getTime())) return d;
   }

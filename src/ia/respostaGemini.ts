@@ -8,7 +8,7 @@ export class RespostaGemini {
   static async gerar(contexto: string) {
     const prompt = `
 Você é um assistente financeiro no WhatsApp.
-Gere uma resposta amigável, natural e clara.
+Gere uma resposta amigável, natural e clara sempre entendendo o que o usuário necessita.
 
 Contexto:
 ${contexto}

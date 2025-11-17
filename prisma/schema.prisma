@@ -112,6 +112,7 @@ model Lembrete {
   id          String    @id @default(uuid())
   usuarioId   String
   mensagem    String
+  valor     Float?
   dataAlvo    DateTime         // Quando a IA deve avisar
   criadoEm    DateTime @default(now())
   enviado     Boolean  @default(false) // para não avisar 2x

@@ -8,16 +8,37 @@ export class LembreteRepository {
     static async criar(dados: {
         usuarioId: string;
         mensagem: string;
-        dataAlvo: Date;
+        data?: string | null;
+        valor?: number | null;
+        dataAlvo?: Date | null;
     }): Promise<Lembrete> {
-        return prisma.lembrete.create({
-            data: {
-                usuarioId: dados.usuarioId,
-                mensagem: dados.mensagem,
-                dataAlvo: dados.dataAlvo,
-                enviado: false,
-            },
-        });
+
+        // Normaliza a data final
+        let dataFinal: Date | null = null;
+
+        if (dados.dataAlvo instanceof Date) {
+            dataFinal = dados.dataAlvo;
+        } else if (dados.data) {
+            const convertida = new Date(dados.data);
+            if (!isNaN(convertida.getTime())) {
+                dataFinal = convertida;
+            }
+        }
+
+        // OBJETO CORRETO (sem undefined)
+        const data: any = {
+            usuarioId: dados.usuarioId,
+            mensagem: dados.mensagem,
+            enviado: false,
+            valor: dados.valor ?? null
+        };
+
+        // Adiciona dataAlvo APENAS se existir
+        if (dataFinal !== null) {
+            data.dataAlvo = dataFinal;
+        }
+
+        return prisma.lembrete.create({ data });
     }
 
     // 🟡 Buscar lembrete por ID

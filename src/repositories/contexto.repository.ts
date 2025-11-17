@@ -19,28 +19,32 @@ export class ContextoRepository {
     };
   }
 
-  // Salvar (overwrite)
-  static async salvar(telefone: string, etapa: string, dados: any = {}) {
+  // Salvar contexto COMPLETO (overwrite)
+  static async salvar(
+    telefone: string,
+    contexto: { etapa: string; dados?: any }
+  ) {
+
     return prisma.contexto.upsert({
       where: { telefone },
       create: {
         telefone,
-        etapa,
-        dados: JSON.stringify(dados)
+        etapa: contexto.etapa,
+        dados: JSON.stringify(contexto.dados ?? {})
       },
       update: {
-        etapa,
-        dados: JSON.stringify(dados)
+        etapa: contexto.etapa,
+        dados: JSON.stringify(contexto.dados ?? {})
       }
     });
   }
 
-  // Define etapa e dados (alias)
+  // Define etapa e dados (corrigido)
   static async definir(telefone: string, etapa: string, dados: any = {}) {
-    return this.salvar(telefone, etapa, dados);
+    return this.salvar(telefone, { etapa, dados });
   }
 
-  // Atualiza apenas dados (merge)
+  // Apenas mescla os dados
   static async atualizarDados(telefone: string, novosDados: any) {
     const existing = await this.obter(telefone);
     const merged = { ...(existing?.dados || {}), ...novosDados };
@@ -59,7 +63,7 @@ export class ContextoRepository {
     });
   }
 
-  // Atualiza etapa + dados (merge)
+  // Atualiza etapa e dados atômicos (merge)
   static async avancar(telefone: string, etapa: string, novosDados: any = {}) {
     const existing = await this.obter(telefone);
     const dados = existing?.dados || {};
@@ -78,7 +82,7 @@ export class ContextoRepository {
     });
   }
 
-  // Atualizar tudo (overwrite completo)
+  // Atualiza tudo (overwrite completo)
   static async atualizar(telefone: string, etapa: string, dados: any) {
     return prisma.contexto.update({
       where: { telefone },
@@ -89,10 +93,10 @@ export class ContextoRepository {
     });
   }
 
-  // Limpar contexto
+  // Limpa o contexto
   static async limpar(telefone: string) {
-    return prisma.contexto.delete({
-      where: { telefone }
-    }).catch(() => null);
+    return prisma.contexto
+      .delete({ where: { telefone } })
+      .catch(() => null);
   }
 }

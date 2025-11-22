@@ -18,6 +18,7 @@ import { CadastroUsuarioHandler } from "../services/handlers/CadastroUsuarioHand
 import { UsuarioRepository } from "../repositories/usuario.repository";
 import { ContextoRepository } from "../repositories/contexto.repository";
 import { EnviadorWhatsApp } from "../services/EnviadorWhatsApp";
+import { ExcluirLembreteHandler } from "../services/handlers/ExcluirLembreteHandler";
 
 export class AssistenteFinanceiro {
 
@@ -42,20 +43,24 @@ export class AssistenteFinanceiro {
     }
 
     // 1) CONTEXTO ATIVO
+    // 1) CONTEXTO ATIVO
     if (contexto) {
       const etapa = contexto.etapa;
 
       switch (etapa) {
 
+        // 📌 Categorias
         case "criando_categoria_nome":
           return CategoriaHandler.salvarNome(telefone, mensagem);
 
         case "criando_categoria_tipo":
           return CategoriaHandler.salvarTipo(telefone, mensagem, usuario!.id);
 
+        // 📌 Agendamentos
         case "informar_data_agendada":
           return AgendamentoHandler.salvarData(telefone, mensagem, usuario!.id);
 
+        // 📌 Lembretes (criação)
         case "criando_lembrete_texto":
           return LembreteHandler.salvarTexto(telefone, mensagem);
 
@@ -68,19 +73,30 @@ export class AssistenteFinanceiro {
         case "complementar_mes_lembrete":
           return LembreteHandler.salvarMes(telefone, mensagem, usuario!.id);
 
+        // 📌 Edição de transação
         case "editar_transacao_id":
           return EditarTransacaoHandler.selecionar(telefone, mensagem);
 
         case "editar_transacao_opcao":
-          if (mensagem.startsWith("1")) return EditarTransacaoHandler.editarValor(telefone, Number(mensagem));
-          if (mensagem.startsWith("2")) return EditarTransacaoHandler.editarDescricao(telefone, mensagem);
+          if (mensagem.startsWith("1"))
+            return EditarTransacaoHandler.editarValor(telefone, Number(mensagem));
+          if (mensagem.startsWith("2"))
+            return EditarTransacaoHandler.editarDescricao(telefone, mensagem);
           break;
 
+        // 📌 Exclusão de transação
         case "excluir_transacao_id":
           return ExcluirTransacaoHandler.confirmar(telefone, mensagem);
 
         case "confirmar_exclusao":
           return ExcluirTransacaoHandler.executar(telefone, mensagem);
+
+        // 📌 Exclusão de lembrete (AQUI ESTAVA FALTANDO)
+        case "excluir_lembrete_escolher":
+          return ExcluirLembreteHandler.escolher(telefone, mensagem);
+
+        case "confirmar_exclusao_lembrete":
+          return ExcluirLembreteHandler.executar(telefone, mensagem);
       }
     }
 
@@ -148,6 +164,20 @@ export class AssistenteFinanceiro {
 
       case "excluir_transacao":
         return ExcluirTransacaoHandler.iniciar(telefone);
+
+      case "excluir_lembrete":
+        return ExcluirLembreteHandler.iniciar(
+          telefone,
+          usuario.id,
+          intent.mensagem,
+          intent.data
+        );
+
+      case "excluir_lembrete_escolher":
+        return ExcluirLembreteHandler.escolher(telefone, mensagem);
+
+      case "confirmar_exclusao_lembrete":
+        return ExcluirLembreteHandler.executar(telefone, mensagem);
 
       case "ver_saldo":
         return RelatorioHandler.executar(telefone, usuario!.id);

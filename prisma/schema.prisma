@@ -62,7 +62,7 @@ model Transacao {
 model Contexto {
   telefone String @id
   etapa    String
-  dados    String
+  dados    String? @db.LongText
   criadoEm DateTime @default(now())
 }
 

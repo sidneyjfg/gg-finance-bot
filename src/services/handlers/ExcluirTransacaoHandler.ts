@@ -5,7 +5,10 @@ import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
 export class ExcluirTransacaoHandler {
 
   static async iniciar(telefone: string) {
-    await ContextoRepository.salvar(telefone, "excluir_transacao_id");
+    await ContextoRepository.salvar(telefone, {
+      etapa: "excluir_transacao_id",
+      dados: {}
+    });
 
     return EnviadorWhatsApp.enviar(
       telefone,
@@ -13,8 +16,12 @@ export class ExcluirTransacaoHandler {
     );
   }
 
+
   static async confirmar(telefone: string, id: string) {
-    await ContextoRepository.salvar(telefone, "confirmar_exclusao", { id });
+    await ContextoRepository.salvar(telefone, {
+      etapa: "confirmar_exclusao",
+      dados: { id }
+    });
 
     return EnviadorWhatsApp.enviar(
       telefone,
@@ -22,9 +29,10 @@ export class ExcluirTransacaoHandler {
     );
   }
 
+
   static async executar(telefone: string, confirmacao: string) {
     const ctx = await ContextoRepository.obter(telefone);
-    const { id } = JSON.parse(ctx!.dados as string);
+    const { id } = ctx!.dados; // ctx.dados já é objeto, NÃO é JSON string
 
     if (!confirmacao.toLowerCase().startsWith("s")) {
       await ContextoRepository.limpar(telefone);
@@ -34,6 +42,10 @@ export class ExcluirTransacaoHandler {
     await TransacaoRepository.deletar(id);
     await ContextoRepository.limpar(telefone);
 
-    return EnviadorWhatsApp.enviar(telefone, "🗑 Transação excluída com sucesso!");
+    return EnviadorWhatsApp.enviar(
+      telefone,
+      "🗑 Transação excluída com sucesso!"
+    );
   }
+
 }

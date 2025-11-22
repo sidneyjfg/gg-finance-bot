@@ -218,6 +218,28 @@ Exemplos:
 - "anota pra mim gastei 200"
 - "me lembra de pagar o boleto"
 
+────────────────────────────────────────
+📌 INTENÇÃO EXTRA: EXCLUIR LEMBRETE
+────────────────────────────────────────
+Sempre que o usuário mencionar as palavras:
+- "lembrete", "aviso", "recordatório", "recordatorio"
+E também usar verbos:
+- "apagar", "excluir", "deletar", "remover", "cancelar"
+
+Então retorne:
+
+{
+  "acao": "excluir_lembrete",
+  "mensagem": string | null,   // texto principal do lembrete
+  "data": string | null         // se houver data como 30/11, dia 5, etc.
+}
+
+Exemplos:
+- "quero excluir o lembrete da academia"
+- "remover aviso do aluguel dia 10"
+- "apagar lembrete de pagar cartão 15/12"
+
+
 ✔ Se a frase estiver incompleta:
 retorne:
 { "acao": "desconhecido" }

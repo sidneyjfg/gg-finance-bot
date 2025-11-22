@@ -4,36 +4,37 @@ const prisma = new PrismaClient();
 
 export class LembreteRepository {
 
-    // 🟢 Criar lembrete
+    /** 🟢 Criar lembrete */
     static async criar(dados: {
         usuarioId: string;
         mensagem: string;
-        data?: string | null;
         valor?: number | null;
+        data?: string | null;
         dataAlvo?: Date | null;
     }): Promise<Lembrete> {
 
-        // Normaliza a data final
         let dataFinal: Date | null = null;
 
+        // Prioridade 1: dataAlvo explícita (Date)
         if (dados.dataAlvo instanceof Date) {
             dataFinal = dados.dataAlvo;
-        } else if (dados.data) {
+        }
+
+        // Prioridade 2: data textual convertida via Date()
+        else if (dados.data) {
             const convertida = new Date(dados.data);
             if (!isNaN(convertida.getTime())) {
                 dataFinal = convertida;
             }
         }
 
-        // OBJETO CORRETO (sem undefined)
         const data: any = {
             usuarioId: dados.usuarioId,
             mensagem: dados.mensagem,
-            enviado: false,
-            valor: dados.valor ?? null
+            valor: dados.valor ?? null,
+            enviado: false
         };
 
-        // Adiciona dataAlvo APENAS se existir
         if (dataFinal !== null) {
             data.dataAlvo = dataFinal;
         }
@@ -41,56 +42,22 @@ export class LembreteRepository {
         return prisma.lembrete.create({ data });
     }
 
-    // 🟡 Buscar lembrete por ID
+    /** 🟡 Buscar por ID */
     static async buscarPorId(id: string): Promise<Lembrete | null> {
         return prisma.lembrete.findUnique({
-            where: { id },
+            where: { id }
         });
     }
 
-    // 🟣 Listar lembretes de um usuário
+    /** 🟣 Listar lembretes do usuário */
     static async listarPorUsuario(usuarioId: string): Promise<Lembrete[]> {
         return prisma.lembrete.findMany({
             where: { usuarioId },
-            orderBy: { dataAlvo: "asc" },
+            orderBy: { dataAlvo: "asc" }
         });
     }
 
-    // 🔵 Listar lembretes não enviados com data vencida
-    static async listarPendentes(): Promise<Lembrete[]> {
-        return prisma.lembrete.findMany({
-            where: {
-                enviado: false,
-                dataAlvo: { lte: new Date() },
-            },
-            orderBy: { dataAlvo: "asc" },
-        });
-    }
-
-    // 🟠 Marcar lembrete como enviado
-    static async marcarComoEnviado(id: string): Promise<Lembrete> {
-        return prisma.lembrete.update({
-            where: { id },
-            data: { enviado: true },
-        });
-    }
-
-    // 🟤 Atualizar lembrete
-    static async atualizar(id: string, dados: Partial<Lembrete>): Promise<Lembrete> {
-        return prisma.lembrete.update({
-            where: { id },
-            data: dados,
-        });
-    }
-
-    // 🔴 Deletar lembrete
-    static async deletar(id: string): Promise<Lembrete> {
-        return prisma.lembrete.delete({
-            where: { id },
-        });
-    }
-
-    // Listar lembretes futuros
+    /** 🔵 Buscar lembretes futuros */
     static async listarFuturos(usuarioId: string) {
         return prisma.lembrete.findMany({
             where: {
@@ -102,4 +69,56 @@ export class LembreteRepository {
         });
     }
 
+    /** 🔍 Buscar lembrete por texto + data (para exclusão inteligente) */
+    /** 🔍 Buscar lembrete por texto + data (case-insensitive manual) */
+    static async buscarPorTextoEData(usuarioId: string, texto: string, data: Date) {
+        const todos = await prisma.lembrete.findMany({
+            where: {
+                usuarioId,
+                dataAlvo: data
+            }
+        });
+
+        const t = texto.toLowerCase();
+
+        return todos.filter(l =>
+            l.mensagem.toLowerCase().includes(t)
+        );
+    }
+
+    /** 🔍 Buscar lembretes apenas pelo texto (case-insensitive manual) */
+    static async buscarSemData(usuarioId: string, texto: string) {
+        const todos = await prisma.lembrete.findMany({
+            where: { usuarioId }
+        });
+
+        const t = texto.toLowerCase();
+
+        return todos.filter(l =>
+            l.mensagem.toLowerCase().includes(t)
+        );
+    }
+
+    /** 🟠 Marcar como enviado */
+    static async marcarComoEnviado(id: string): Promise<Lembrete> {
+        return prisma.lembrete.update({
+            where: { id },
+            data: { enviado: true }
+        });
+    }
+
+    /** 🟤 Atualizar lembrete */
+    static async atualizar(id: string, dados: Partial<Lembrete>): Promise<Lembrete> {
+        return prisma.lembrete.update({
+            where: { id },
+            data: dados
+        });
+    }
+
+    /** 🔴 Deletar lembrete */
+    static async deletar(id: string): Promise<Lembrete> {
+        return prisma.lembrete.delete({
+            where: { id }
+        });
+    }
 }

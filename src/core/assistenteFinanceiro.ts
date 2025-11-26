@@ -102,10 +102,6 @@ export class AssistenteFinanceiro {
 
     // 2) GATE — Cadastro obrigatório antes de tudo
     if (!usuario) {
-      await EnviadorWhatsApp.enviar(
-        telefone,
-        "👋 Olá! Antes de usar o *GG Finance*, preciso fazer um cadastro rápido.\n\nMe envie *seu nome completo* 😊"
-      );
       return CadastroUsuarioHandler.executar(telefone, mensagem);
     }
 
@@ -113,16 +109,16 @@ export class AssistenteFinanceiro {
     const intent = await InterpretadorGemini.interpretarMensagem(mensagem, { usuario });
     console.log("IA:", intent);
 
-    const requerCadastro = [
-      "registrar_despesa", "registrar_receita", "criar_categoria",
-      "editar_transacao", "excluir_transacao", "criar_lembrete",
-      "ver_saldo", "ver_perfil"
-    ];
+    // const requerCadastro = [
+    //   "registrar_despesa", "registrar_receita", "criar_categoria",
+    //   "editar_transacao", "excluir_transacao", "criar_lembrete",
+    //   "ver_saldo", "ver_perfil"
+    // ];
 
-    if (!usuario && requerCadastro.includes(intent.acao)) {
-      await EnviadorWhatsApp.enviar(telefone, "Para continuar, preciso do seu nome completo 🙂");
-      return CadastroUsuarioHandler.executar(telefone, mensagem);
-    }
+    // if (!usuario && requerCadastro.includes(intent.acao)) {
+    //   await EnviadorWhatsApp.enviar(telefone, "Para continuar, preciso do seu nome completo 🙂");
+    //   return CadastroUsuarioHandler.executar(telefone, mensagem);
+    // }
 
     // 4) ROTAS PRINCIPAIS
     switch (intent.acao) {

@@ -1,48 +1,46 @@
 // services/CategoriaAutoService.ts
+import { Categoria, TipoTransacao } from "@prisma/client";
 import { CategoriaRepository } from "../repositories/categoria.repository";
+import { inferirCategoriaPadrao } from "../utils/categoriaNormalizada";
 
 export class CategoriaAutoService {
+  static async resolver(
+    usuarioId: string,
+    nomeIA: string | null,
+    tipo: TipoTransacao,       // "receita" | "despesa"
+    descricao?: string | null
+  ): Promise<Categoria> {
+    // 1) Tenta inferir categoria genérica (Streaming, Transporte, etc.)
+    const categoriaGenerica = inferirCategoriaPadrao(
+      tipo === "receita" ? "receita" : "despesa",
+      descricao,
+      nomeIA
+    );
 
-  static async resolver(usuarioId: string, nomeIA: string | null, tipo: "receita" | "despesa") {
+    let nomeFinal: string | null = categoriaGenerica ?? nomeIA;
 
-    // Caso IA não retorne nada → usar categoria padrão
-    if (!nomeIA) {
-      const nomePadrao = tipo === "receita" ? "Outras receitas" : "Outras despesas";
-      return this.pegarOuCriar(usuarioId, nomePadrao, tipo);
+    // 2) Se nada veio, categoria padrão por tipo
+    if (!nomeFinal || nomeFinal.trim().length === 0) {
+      nomeFinal = tipo === "receita" ? "Outras receitas" : "Outras despesas";
     }
 
-    const nomeNormalizado = nomeIA.trim().toLowerCase();
+    const nomeNormalizado = nomeFinal.trim();
 
-    // Buscar categorias insensitivamente
-    const categoriaExistente = await CategoriaRepository.buscarPorNome(usuarioId, nomeNormalizado);
+    const categoriaExistente = await CategoriaRepository.buscarPorNome(
+      usuarioId,
+      nomeNormalizado
+    );
 
     if (categoriaExistente) {
-      return categoriaExistente.id;
+      return categoriaExistente;
     }
 
-    // Criar nova categoria automaticamente
     const nova = await CategoriaRepository.criar({
       usuarioId,
       nome: nomeNormalizado,
-      tipo
+      tipo,
     });
 
-    return nova.id;
-  }
-
-  private static async pegarOuCriar(usuarioId: string, nome: string, tipo: "receita" | "despesa") {
-    const categoriaExistente = await CategoriaRepository.buscarPorNome(usuarioId, nome);
-
-    if (categoriaExistente) {
-      return categoriaExistente.id;
-    }
-
-    const nova = await CategoriaRepository.criar({
-      usuarioId,
-      nome,
-      tipo
-    });
-
-    return nova.id;
+    return nova;
   }
 }

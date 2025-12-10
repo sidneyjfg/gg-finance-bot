@@ -2,7 +2,7 @@ import { TransacaoRepository } from "../../repositories/transacao.repository";
 import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
 import { validarValorTransacao } from "../../utils/seguranca.utils";
 import { UsuarioRepository } from "../../repositories/usuario.repository";
-import { CategoriaRepository } from "../../repositories/categoria.repository"; // <-- importante
+import { CategoriaAutoService } from "../CategoriaAutoService";
 
 export class RegistrarDespesaHandler {
 
@@ -13,7 +13,7 @@ export class RegistrarDespesaHandler {
     descricao?: string,
     agendar?: boolean,
     dataAgendadaTexto?: string | null,
-    categoriaId?: string | null
+    categoriaTexto?: string | null // 👈 AGORA É TEXTO, NÃO ID
   ) {
 
     const usuario = await UsuarioRepository.buscarPorId(usuarioId);
@@ -32,21 +32,18 @@ export class RegistrarDespesaHandler {
     }
 
     // ---------------------------------------------------------
-    // 📌 1) SE O USUÁRIO NÃO INFORMAR CATEGORIA → usar “Outros”
+    // 📌 1) RESOLVER CATEGORIA (com IA + regras internas)
     // ---------------------------------------------------------
-    if (!categoriaId) {
-      let categoria = await CategoriaRepository.buscarPorNome(usuarioId, "Outros");
+    const categoria = await CategoriaAutoService.resolver(
+      usuarioId,
+      categoriaTexto ?? null,
+      "despesa",
+      descricao ?? null
+    );
 
-      if (!categoria) {
-        categoria = await CategoriaRepository.criar({
-          usuarioId,
-          nome: "Outros",
-          tipo: "despesa"
-        });
-      }
+    const categoriaId = categoria.id;
+    const categoriaNomeUsada = categoria.nome;
 
-      categoriaId = categoria.id;
-    }
 
     // ---------------------------------------------------------
     // 📌 2) TRATAR AGENDAMENTO
@@ -73,32 +70,43 @@ export class RegistrarDespesaHandler {
     // ---------------------------------------------------------
     // 📌 3) SALVAR DESPESA
     // ---------------------------------------------------------
-    await TransacaoRepository.criar({
+    const transacao = await TransacaoRepository.criar({
       usuarioId,
       tipo: "despesa",
       valor,
       descricao: descricao ?? undefined,
       categoriaId,
-      data: new Date(),              // 👈 obrigatório
+      data: new Date(),
       dataAgendada,
       status
     });
 
     // ---------------------------------------------------------
-    // 📌 4) RESPOSTA
+    // 📌 4) RESPOSTA (mostrar nome, valor e categoria)
     // ---------------------------------------------------------
+    const formatar = (v: number) =>
+      new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      }).format(v);
+
     if (dataAgendada) {
       return EnviadorWhatsApp.enviar(
         telefone,
-        `📅 *Despesa agendada!*\n` +
-        `💸 Valor: R$ ${valor.toFixed(2)}\n` +
-        `🔔 Vou te lembrar em *${dataAgendada.toLocaleDateString("pt-BR")}*`
+        "📅 *Despesa agendada!*\n" +
+        `📝 *Descrição*: ${transacao.descricao ?? "Sem descrição"}\n` +
+        `🏷 *Categoria*: ${categoriaNomeUsada}\n` +
+        `💰 *Valor*: ${formatar(Number(transacao.valor))}\n` +
+        `🔔 Lembrete em: *${dataAgendada.toLocaleDateString("pt-BR")}*`
       );
     }
 
     return EnviadorWhatsApp.enviar(
       telefone,
-      `💸 *Despesa registrada!*\nValor: R$ ${valor.toFixed(2)}`
+      "💸 *Despesa registrada!*\n" +
+      `📝 *Descrição*: ${transacao.descricao ?? "Sem descrição"}\n` +
+      `🏷 *Categoria*: ${categoriaNomeUsada}\n` +
+      `💰 *Valor*: ${formatar(Number(transacao.valor))}`
     );
   }
 }

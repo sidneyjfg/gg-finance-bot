@@ -196,6 +196,68 @@ Exemplos:
 ###############################################################
 { "acao": "desconhecido" }
 
+###############################################################
+# 13) Ver gastos por categoria
+###############################################################
+{ "acao": "ver_gastos_por_categoria" }
+
+Use esta ação quando o usuário pedir RESUMO de gastos separados por categoria, por exemplo:
+- "quanto gastei por categoria?"
+- "me mostra meus gastos por categoria"
+- "quais são meus gastos em cada categoria?"
+- "resumo por categoria"
+
+NÃO use esta ação para registrar novas despesas, apenas para CONSULTAR os gastos já registrados.
+
+⚠️ SOBRE A CATEGORIA:
+
+Sempre que possível, a propriedade "categoria" NÃO deve ser o nome da loja ou do serviço,
+mas sim uma categoria genérica.
+
+Exemplos de categorias genéricas recomendadas:
+- "Alimentação"
+- "Transporte"
+- "Streaming"
+- "Moradia"
+- "Saúde"
+- "Educação"
+- "Lazer"
+- "Vestuário"
+- "Financeiro"
+- "Família"
+- "Outros"
+
+Exemplos:
+- "gastei 20 no spotify" -> categoria: "Streaming"
+- "coloca 120 de gasolina" -> categoria: "Transporte"
+- "pedi ifood 35 reais" -> categoria: "Alimentação"
+- "paguei aluguel 1500" -> categoria: "Moradia"
+
+###############################################################
+# 14) Ver gastos de uma categoria específica
+###############################################################
+{
+  "acao": "ver_gastos_da_categoria",
+  "categoria": string | null
+}
+
+Use esta ação quando o usuário pedir os gastos de UMA categoria:
+
+- "quais gastos são de Outros?"
+- "quero ver os gastos de transporte"
+- "o que eu já gastei em alimentação?"
+- "me mostra os gastos da categoria streaming"
+
+Exemplo:
+Mensagem: "me mostra os gastos por categoria e depois detalha os gastos de transporte"
+
+Resposta esperada (formato ilustrativo):
+[
+  { "acao": "ver_gastos_por_categoria" },
+  { "acao": "ver_gastos_da_categoria", "categoria": "Transporte" }
+]
+
+
 ────────────────────────────────────────
 📌 INTENÇÃO EXTRA: EXCLUIR LEMBRETE
 ────────────────────────────────────────

@@ -10,6 +10,8 @@ import { LembreteHandler } from "../services/handlers/LembreteHandler";
 import { AgendamentoHandler } from "../services/handlers/AgendamentoHandler";
 import { EditarTransacaoHandler } from "../services/handlers/EditarTransacaoHandler";
 import { ExcluirTransacaoHandler } from "../services/handlers/ExcluirTransacaoHandler";
+import { GastoPorCategoriaHandler } from "../services/handlers/GastoPorCategoriaHandler";
+import { GastosDaCategoriaHandler } from "../services/handlers/GastosDaCategoriaHandler";
 
 import { RelatorioHandler } from "../services/handlers/RelatorioHandler";
 import { PerfilHandler } from "../services/handlers/PerfilHandler";
@@ -113,6 +115,23 @@ export class AssistenteFinanceiro {
       return CadastroUsuarioHandler.executar(telefone, mensagem);
     }
 
+    // 2.5) Comando direto: "quanto gastei por categoria?"
+    const mensagemNormalizada = mensagem
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, ""); // remove acentos
+
+    if (
+      mensagemNormalizada.includes("gastei por categoria") ||
+      mensagemNormalizada.includes("gastos por categoria") ||
+      mensagemNormalizada.includes("gasto por categoria") ||
+      mensagemNormalizada.includes("quanto eu gastei por categoria") ||
+      mensagemNormalizada.includes("quanto gastei em cada categoria")
+    ) {
+      await GastoPorCategoriaHandler.executar(telefone, usuario.id);
+      return;
+    }
+
     // 3) IA Interpretadora (agora com múltiplas ações)
     const interpretacao = await InterpretadorGemini.interpretarMensagem(mensagem, { usuario });
 
@@ -134,6 +153,7 @@ export class AssistenteFinanceiro {
             usuario!.id,
             intent.valor,
             intent.descricao,
+            intent.agendar,
             intent.dataAgendada,
             intent.categoria
           );
@@ -167,6 +187,17 @@ export class AssistenteFinanceiro {
           );
           break;
 
+        case "ver_gastos_da_categoria":
+          if (intent.categoria) {
+            processouAlgumaAcao = true;
+            await GastosDaCategoriaHandler.executar(
+              telefone,
+              usuario.id,
+              intent.categoria
+            );
+          }
+          break;
+
         case "editar_transacao":
           processouAlgumaAcao = true;
           await EditarTransacaoHandler.iniciar(telefone);
@@ -192,6 +223,11 @@ export class AssistenteFinanceiro {
           await RelatorioHandler.executar(telefone, usuario!.id);
           break;
 
+        case "ver_gastos_por_categoria":
+          processouAlgumaAcao = true;
+          await GastoPorCategoriaHandler.executar(telefone, usuario!.id);
+          break;
+
         case "ver_perfil":
           processouAlgumaAcao = true;
           await PerfilHandler.executar(telefone, usuario!.id);
@@ -205,6 +241,7 @@ export class AssistenteFinanceiro {
             "• Registrar *despesa*\n" +
             "• Registrar *receita*\n" +
             "• Ver *saldo*\n" +
+            "• Ver *gastos por categoria*\n" +
             "• Criar *lembrete*\n" +
             "• Criar *categoria*"
           );

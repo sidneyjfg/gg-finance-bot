@@ -5,6 +5,15 @@ import {
   StatusTransacao,
 } from "@prisma/client";
 import { prisma } from "../infra/prisma";
+import { CategoriaRepository } from "./categoria.repository";
+
+
+type GastoPorCategoriaItem = {
+  categoriaId: string | null;
+  nome: string;
+  total: number;
+};
+
 
 export class TransacaoRepository {
   // Criar transação usando o tipo unchecked (campos escalares)
@@ -103,6 +112,82 @@ export class TransacaoRepository {
       despesas,
       saldo: receitas - despesas,
     };
+  }
+
+  static async gastosPorCategoria(
+    usuarioId: string
+  ): Promise<GastoPorCategoriaItem[]> {
+    const grupos = await prisma.transacao.groupBy({
+      by: ["categoriaId"],
+      where: {
+        usuarioId,
+        tipo: "despesa",
+        status: StatusTransacao.concluida, // só o que foi efetivamente gasto
+      },
+      _sum: {
+        valor: true,
+      },
+    });
+
+    if (!grupos.length) {
+      return [];
+    }
+
+    // pega só os IDs que não são null
+    const categoriaIds = grupos
+      .map((g) => g.categoriaId)
+      .filter((id): id is string => id !== null);
+
+    const categorias =
+      categoriaIds.length > 0
+        ? await prisma.categoria.findMany({
+          where: { id: { in: categoriaIds } },
+        })
+        : [];
+
+    return grupos
+      .map((g) => {
+        const total = Number(g._sum.valor ?? 0);
+
+        const categoria =
+          g.categoriaId != null
+            ? categorias.find((c) => c.id === g.categoriaId)
+            : null;
+
+        return {
+          categoriaId: g.categoriaId,
+          nome: categoria?.nome ?? "Sem categoria",
+          total,
+        };
+      })
+      // opcional: ordenar da maior para a menor
+      .sort((a, b) => b.total - a.total);
+  }
+
+
+  static async listarDespesasPorCategoriaNome(
+    usuarioId: string,
+    nomeCategoria: string
+  ): Promise<Transacao[]> {
+    // usa o mesmo padrão de comparação do CategoriaRepository (lowercase, trim, etc.)
+    const categoria = await CategoriaRepository.buscarPorNome(
+      usuarioId,
+      nomeCategoria
+    );
+
+    if (!categoria) {
+      return [];
+    }
+
+    return prisma.transacao.findMany({
+      where: {
+        usuarioId,
+        tipo: "despesa",
+        status: StatusTransacao.concluida,
+        categoriaId: categoria.id,
+      },
+      orderBy: { data: "desc" },
+    });
   }
 
   static async atualizar(

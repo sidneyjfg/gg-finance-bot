@@ -11,18 +11,24 @@ export class RegistrarReceitaHandler {
     usuarioId: string,
     valor: number,
     descricao?: string,
-    dataAgendada?: Date | null,
-    categoriaNome?: string
+    dataAgendadaTexto?: string | null,
+    categoriaTexto?: string | null
   ) {
 
+    // -------------------------------
+    // 📌 Garantir que usuário existe
+    // -------------------------------
     const usuario = await UsuarioRepository.buscarPorId(usuarioId);
     if (!usuario) {
       return EnviadorWhatsApp.enviar(
         telefone,
-        "⚠️ Usuário não encontrado. Faça o cadastro enviando *1*."
+        "⚠️ Usuário não encontrado. Envie *1* para cadastrar."
       );
     }
 
+    // -------------------------------
+    // 📌 Validar valor
+    // -------------------------------
     if (!validarValorTransacao(valor)) {
       return EnviadorWhatsApp.enviar(
         telefone,
@@ -31,45 +37,79 @@ export class RegistrarReceitaHandler {
     }
 
     // -------------------------------
-    // 📌 Categoria automática
+    // 📌 Resolver categoria automaticamente
     // -------------------------------
-    const categoriaId = await CategoriaAutoService.resolver(
+    const categoria = await CategoriaAutoService.resolver(
       usuarioId,
-      categoriaNome ?? null,
-      "receita"
+      categoriaTexto ?? null,
+      "receita",
+      descricao ?? null
     );
 
+    const categoriaId = categoria.id;
+    const categoriaNomeUsada = categoria.nome;
+
     // -------------------------------
-    // 📌 Criar transação
+    // 📌 Tratar data agendada (se houver)
     // -------------------------------
-    await TransacaoRepository.criar({
+    let dataAgendada: Date | null = null;
+      
+    if (dataAgendadaTexto) {
+      const parsed = new Date(dataAgendadaTexto);
+      if (!isNaN(parsed.getTime())) {
+        dataAgendada = parsed;
+      } else {
+        return EnviadorWhatsApp.enviar(
+          telefone,
+          "📅 Não consegui entender a data informada. Use o formato *dd/mm/aaaa*."
+        );
+      }
+    }
+
+    const status = dataAgendada ? "pendente" : "concluida";
+
+    // -------------------------------
+    // 📌 Criar transação no banco
+    // -------------------------------
+    const transacao = await TransacaoRepository.criar({
       usuarioId,
       tipo: "receita",
       valor,
       descricao: descricao ?? "Receita sem descrição",
-      categoriaId,
-      data: new Date(),              // 👈 OBRIGATÓRIO
-      dataAgendada: dataAgendada ?? null,
-      status: dataAgendada ? "pendente" : "concluida"
+      categoriaId,        // 👈 agora é string, correto!
+      data: new Date(),
+      dataAgendada,
+      status
     });
 
+    // -------------------------------
+    // 📌 Enviar resposta ao usuário
+    // -------------------------------
+    const formatar = (v: number) =>
+      new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      }).format(v);
 
-    // -------------------------------
-    // 📌 Resposta ao usuário
-    // -------------------------------
+    // Receita agendada
     if (dataAgendada) {
       return EnviadorWhatsApp.enviar(
         telefone,
-        `📅 *Receita agendada!*  
-💰 Valor: R$ ${valor.toFixed(2)}  
-🔔 Para ${dataAgendada.toLocaleDateString("pt-BR")}`
+        `📅 *Receita agendada!*
+📝 ${transacao.descricao}
+🏷 Categoria: ${categoriaNomeUsada}
+💰 Valor: ${formatar(valor)}
+🔔 Para: ${dataAgendada.toLocaleDateString("pt-BR")}`
       );
     }
 
+    // Receita concluída
     return EnviadorWhatsApp.enviar(
       telefone,
-      `✅ *Receita registrada!*  
-💰 Valor: R$ ${valor.toFixed(2)}`
+      `✅ *Receita registrada!*
+📝 ${transacao.descricao}
+🏷 Categoria: ${categoriaNomeUsada}
+💰 Valor: ${formatar(valor)}`
     );
   }
 }

@@ -37,13 +37,32 @@ export class AssistenteFinanceiro {
       return;
     }
 
-    // 0) Saudação — apenas se não houver contexto e mensagem for saudação
+    // 0) Saudação — apenas se NÃO houver contexto e a mensagem for SÓ saudação
     if (usuario && !contexto) {
-      const msg = mensagem.toLowerCase().trim();
-      const eSaudacao = ["oi", "olá", "ola", "ei", "hey", "bom dia", "boa tarde", "boa noite"]
-        .some(s => msg.startsWith(s));
+      const msgOriginal = mensagem.trim();
+      const msg = msgOriginal.toLowerCase().trim();
 
-      if (eSaudacao) {
+      const saudacoes = ["oi", "olá", "ola", "ei", "hey", "bom dia", "boa tarde", "boa noite"];
+
+      const comecaComSaudacao = saudacoes.some((s) => msg.startsWith(s));
+
+      // remove quebras de linha e espaços duplicados
+      const msgCompacta = msg.replace(/\s+/g, " ");
+
+      // regra: só considero saudação se a mensagem for curta e SEM números,
+      // nem palavras típicas de operação financeira ou comando
+      const temNumero = /\d/.test(msgCompacta);
+      const temPalavraDeAcao = /(recebi|salario|salário|gastei|pagar|paguei|cartao|cartão|boleto|conta|gasto|despesa|receita)/.test(
+        msgCompacta
+      );
+
+      const mensagemEhSoSaudacao =
+        comecaComSaudacao &&
+        msgCompacta.length <= 20 && // "bom dia", "boa tarde", "oi tudo bem" etc.
+        !temNumero &&
+        !temPalavraDeAcao;
+
+      if (mensagemEhSoSaudacao) {
         await EnviadorWhatsApp.enviar(
           telefone,
           `👋 Olá, *${usuario.nome?.split(" ")[0] || "tudo bem"}*! Como posso te ajudar hoje?`
@@ -51,6 +70,7 @@ export class AssistenteFinanceiro {
         return;
       }
     }
+
 
     // 1) CONTEXTO ATIVO
     if (contexto) {

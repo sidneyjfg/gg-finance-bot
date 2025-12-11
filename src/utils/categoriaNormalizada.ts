@@ -92,10 +92,17 @@ export function inferirCategoriaPadrao(
   ) {
     return "Alimentação";
   }
-
-  // 🚗 Transporte (gasolina, uber, ônibus, estacionamento etc.)
+  // ⛽ COMBUSTÍVEL — gasolina, etanol, álcool, diesel, posto etc.
   if (
-    /\b(gasolina|etanol|alcool|álcool|diesel|posto|ipiranga|shell|uber|99|cabify|onibus|[oô]nibus|metro|metr[oô]|trem|passagem|corrida|taxi|t[aá]xi|estacionamento|pedagio|ped[aá]gio|vale transporte|vt)\b/.test(
+    /\b(gasolina|etanol|alcool|álcool|diesel|abasteci|abastecer|abastecimento|posto|br|shell|ipiranga|petrobras|petrobr[aá]s|combustivel|combustível)\b/.test(
+      txt
+    )
+  ) {
+    return "Combustível";
+  }
+  // 🚕 TRANSPORTE — Uber, ônibus, metrô, trem etc. (sem combustível)
+  if (
+    /\b(uber|99|cabify|onibus|ônibus|omnibus|metro|metr[oô]|trem|passagem|corrida|taxi|táxi|estacionamento|pedagio|pedágio|vale transporte|vt)\b/.test(
       txt
     )
   ) {

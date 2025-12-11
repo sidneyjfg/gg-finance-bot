@@ -257,6 +257,27 @@ Resposta esperada (formato ilustrativo):
   { "acao": "ver_gastos_da_categoria", "categoria": "Transporte" }
 ]
 
+###############################################################
+# 15) Ver receitas detalhadas
+###############################################################
+{ "acao": "ver_receitas_detalhadas" }
+
+Use quando o usuário pedir para ver/listar/visualizar receitas registradas:
+- "ver receitas"
+- "minhas receitas"
+- "quero listar minhas receitas"
+- "visualizar receitas"
+
+###############################################################
+# 16) Ver despesas detalhadas
+###############################################################
+{ "acao": "ver_despesas_detalhadas" }
+
+Use quando o usuário pedir:
+- "ver despesas"
+- "minhas despesas"
+- "listar despesas"
+- "visualizar despesas"
 
 ────────────────────────────────────────
 📌 INTENÇÃO EXTRA: EXCLUIR LEMBRETE

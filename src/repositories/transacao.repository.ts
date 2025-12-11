@@ -3,6 +3,7 @@ import {
   Transacao,
   TipoTransacao,
   StatusTransacao,
+  Categoria
 } from "@prisma/client";
 import { prisma } from "../infra/prisma";
 import { CategoriaRepository } from "./categoria.repository";
@@ -14,6 +15,9 @@ type GastoPorCategoriaItem = {
   total: number;
 };
 
+type TransacaoComCategoria = Transacao & {
+  categoria: Categoria | null;
+};
 
 export class TransacaoRepository {
   // Criar transação usando o tipo unchecked (campos escalares)
@@ -65,6 +69,22 @@ export class TransacaoRepository {
     return prisma.transacao.findMany({
       where: { usuarioId, tipo },
       orderBy: { data: "desc" },
+    });
+  }
+
+  static async listarDetalhadoPorTipo(
+    usuarioId: string,
+    tipo: TipoTransacao
+  ): Promise<TransacaoComCategoria[]> {
+    return prisma.transacao.findMany({
+      where: {
+        usuarioId,
+        tipo
+      },
+      orderBy: { data: "desc" },
+      include: {
+        categoria: true
+      }
     });
   }
 

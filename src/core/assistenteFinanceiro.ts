@@ -21,7 +21,10 @@ import { UsuarioRepository } from "../repositories/usuario.repository";
 import { ContextoRepository } from "../repositories/contexto.repository";
 import { EnviadorWhatsApp } from "../services/EnviadorWhatsApp";
 import { ExcluirLembreteHandler } from "../services/handlers/ExcluirLembreteHandler";
-
+import { ListarDespesasHandler } from "../services/handlers/ListarDespesaHandler";
+import { ListarReceitasHandler } from "../services/handlers/ListarReceitaHandler";
+import { RelatorioReceitasPeriodoHandler } from "../services/handlers/RelatorioReceitasPeriodoHandler";
+import { RelatorioDespesasPeriodoHandler } from "../services/handlers/RelatorioDespesasPeriodoHandler";
 export class AssistenteFinanceiro {
 
   static async processar(telefone: string, mensagem: string) {
@@ -151,6 +154,49 @@ export class AssistenteFinanceiro {
       await GastoPorCategoriaHandler.executar(telefone, usuario.id);
       return;
     }
+    if (
+      mensagemNormalizada.includes("minhas receitas") ||
+      mensagemNormalizada.includes("ver receitas") ||
+      mensagemNormalizada.includes("visualizar receitas") ||
+      mensagemNormalizada.includes("listar receitas")
+    ) {
+      await ListarReceitasHandler.executar(telefone, usuario.id);
+      return;
+    }
+
+    // 🔹 Ver despesas detalhadas (atalho direto por texto)
+    if (
+      mensagemNormalizada.includes("minhas despesas") ||
+      mensagemNormalizada.includes("ver despesas") ||
+      mensagemNormalizada.includes("visualizar despesas") ||
+      mensagemNormalizada.includes("listar despesas")
+    ) {
+      await ListarDespesasHandler.executar(telefone, usuario.id);
+      return;
+    }
+    if (
+      mensagemNormalizada.includes("receitas deste mes") ||
+      mensagemNormalizada.includes("receitas desse mes") ||
+      mensagemNormalizada.includes("receitas do mes atual")
+    ) {
+      await RelatorioReceitasPeriodoHandler.receitasDoMesAtual(
+        telefone,
+        usuario.id
+      );
+      return;
+    }
+    if (
+      mensagemNormalizada.includes("despesas deste mes") ||
+      mensagemNormalizada.includes("despesas desse mes") ||
+      mensagemNormalizada.includes("despesas do mes atual") ||
+      mensagemNormalizada.includes("gastos deste mes")
+    ) {
+      await RelatorioDespesasPeriodoHandler.despesasDoMesAtual(
+        telefone,
+        usuario.id
+      );
+      return;
+    }
 
     // 3) IA Interpretadora (agora com múltiplas ações)
     const interpretacao = await InterpretadorGemini.interpretarMensagem(mensagem, { usuario });
@@ -216,6 +262,16 @@ export class AssistenteFinanceiro {
               intent.categoria
             );
           }
+          break;
+
+        case "ver_receitas_detalhadas":
+          processouAlgumaAcao = true;
+          await ListarReceitasHandler.executar(telefone, usuario.id);
+          break;
+
+        case "ver_despesas_detalhadas":
+          processouAlgumaAcao = true;
+          await ListarDespesasHandler.executar(telefone, usuario.id);
           break;
 
         case "editar_transacao":

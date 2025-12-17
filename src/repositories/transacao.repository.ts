@@ -8,7 +8,6 @@ import {
 import { prisma } from "../infra/prisma";
 import { CategoriaRepository } from "./categoria.repository";
 
-
 type GastoPorCategoriaItem = {
   categoriaId: string | null;
   nome: string;
@@ -32,7 +31,7 @@ export class TransacaoRepository {
         categoriaId: dados.categoriaId ?? null,
         tipo: dados.tipo,
         valor: dados.valor,
-        descricao: (dados as any).descricao ?? null, // se existir no modelo
+        descricao: (dados as any).descricao ?? null,
         data: dados.data ?? new Date(),
         dataAgendada: dados.dataAgendada ?? null,
         status: dados.status ?? "concluida",
@@ -105,11 +104,12 @@ export class TransacaoRepository {
         data:
           params.dataInicio && params.dataFim
             ? {
-              gte: params.dataInicio,
-              lte: params.dataFim,
-            }
+                gte: params.dataInicio,
+                lt: params.dataFim, // ✅ fim EXCLUSIVO
+              }
             : undefined,
       },
+      orderBy: { data: "desc" },
     });
   }
 
@@ -142,7 +142,7 @@ export class TransacaoRepository {
       where: {
         usuarioId,
         tipo: "despesa",
-        status: StatusTransacao.concluida, // só o que foi efetivamente gasto
+        status: StatusTransacao.concluida,
       },
       _sum: {
         valor: true,
@@ -153,7 +153,6 @@ export class TransacaoRepository {
       return [];
     }
 
-    // pega só os IDs que não são null
     const categoriaIds = grupos
       .map((g) => g.categoriaId)
       .filter((id): id is string => id !== null);
@@ -161,8 +160,8 @@ export class TransacaoRepository {
     const categorias =
       categoriaIds.length > 0
         ? await prisma.categoria.findMany({
-          where: { id: { in: categoriaIds } },
-        })
+            where: { id: { in: categoriaIds } },
+          })
         : [];
 
     return grupos
@@ -180,16 +179,13 @@ export class TransacaoRepository {
           total,
         };
       })
-      // opcional: ordenar da maior para a menor
       .sort((a, b) => b.total - a.total);
   }
-
 
   static async listarDespesasPorCategoriaNome(
     usuarioId: string,
     nomeCategoria: string
   ): Promise<Transacao[]> {
-    // usa o mesmo padrão de comparação do CategoriaRepository (lowercase, trim, etc.)
     const categoria = await CategoriaRepository.buscarPorNome(
       usuarioId,
       nomeCategoria

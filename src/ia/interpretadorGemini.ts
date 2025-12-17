@@ -103,6 +103,7 @@ Exemplos:
 - "me avisa amanhã de depositar 50 reais"
 - "coloca um lembrete pro dia 20"
 - "avise amanhã pra enviar a fatura"
+- "me lembre de pagar uma conta depois de amanha"
 
 ###############################################################
 # 5) Recorrências (qualquer coisa repetitiva)
@@ -229,7 +230,8 @@ Exemplos de categorias genéricas recomendadas:
 
 Exemplos:
 - "gastei 20 no spotify" -> categoria: "Streaming"
-- "coloca 120 de gasolina" -> categoria: "Transporte"
+- "coloca 50 de uber" -> categoria: "transporte"
+- "coloca 120 de gasolina" -> categoria: "combustivel"
 - "pedi ifood 35 reais" -> categoria: "Alimentação"
 - "paguei aluguel 1500" -> categoria: "Moradia"
 
@@ -333,6 +335,7 @@ Se não entender nada da mensagem, responda:
 - 50reais
 - 5mil
 - 3.200,00
+- 30 conto
 
 ✔ Extração de datas naturais:
 - amanhã

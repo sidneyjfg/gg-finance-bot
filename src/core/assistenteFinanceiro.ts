@@ -23,12 +23,13 @@ import { EnviadorWhatsApp } from "../services/EnviadorWhatsApp";
 import { ExcluirLembreteHandler } from "../services/handlers/ExcluirLembreteHandler";
 import { ListarDespesasHandler } from "../services/handlers/ListarDespesaHandler";
 import { ListarReceitasHandler } from "../services/handlers/ListarReceitaHandler";
-import { RelatorioReceitasPeriodoHandler } from "../services/handlers/RelatorioReceitasPeriodoHandler";
-import { RelatorioDespesasPeriodoHandler } from "../services/handlers/RelatorioDespesasPeriodoHandler";
+import { extrairMesEAno } from "../utils/periodo";
+
+import { DespesasPorMesHandler } from "../services/handlers/DespesasPorMesHandler";
+import { ReceitasPorMesHandler } from "../services/handlers/ReceitasPorMesHandler";
+
 export class AssistenteFinanceiro {
-
   static async processar(telefone: string, mensagem: string) {
-
     const usuario = await UsuarioRepository.buscarPorTelefone(telefone);
     const contexto = await ContextoRepository.obter(telefone);
 
@@ -46,7 +47,6 @@ export class AssistenteFinanceiro {
       const msg = msgOriginal.toLowerCase().trim();
 
       const saudacoes = ["oi", "olá", "ola", "ei", "hey", "bom dia", "boa tarde", "boa noite"];
-
       const comecaComSaudacao = saudacoes.some((s) => msg.startsWith(s));
 
       // remove quebras de linha e espaços duplicados
@@ -74,13 +74,11 @@ export class AssistenteFinanceiro {
       }
     }
 
-
     // 1) CONTEXTO ATIVO
     if (contexto) {
       const etapa = contexto.etapa;
 
       switch (etapa) {
-
         // 📌 Categorias
         case "criando_categoria_nome":
           return CategoriaHandler.salvarNome(telefone, mensagem);
@@ -138,22 +136,87 @@ export class AssistenteFinanceiro {
       return CadastroUsuarioHandler.executar(telefone, mensagem);
     }
 
-    // 2.5) Comando direto: "quanto gastei por categoria?"
+    // 2.5) ATALHOS SEM IA
     const mensagemNormalizada = mensagem
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
-    const querTodasReceitas =
-      mensagemNormalizada.includes("todas as receitas") ||
-      mensagemNormalizada.includes("ver todas as receitas") ||
-      mensagemNormalizada.includes("quero ver todas as receitas");
 
-    const querTodasDespesas =
-      mensagemNormalizada.includes("todas as despesas") ||
-      mensagemNormalizada.includes("ver todas as despesas") ||
-      mensagemNormalizada.includes("quero ver todas as despesas");
-    // remove acentos
+    const querTodas =
+      mensagemNormalizada.includes("todas") ||
+      mensagemNormalizada.includes("tudo") ||
+      mensagemNormalizada.includes("completo") ||
+      mensagemNormalizada.includes("sem limite");
 
+    // ✅ agora extrai "mês 11", "mês passado", "esse mês", "novembro", etc.
+    const mesAno = extrairMesEAno(mensagem);
+
+    // detectar pedido de despesas/gastos
+    const pediuDespesas = /(despesa|despesas|gasto|gastos)/.test(mensagemNormalizada);
+
+    // detectar pedido de receitas/entradas
+    const pediuReceitas = /(receita|receitas|entrada|entradas)/.test(mensagemNormalizada);
+
+    // ✅ verbo de listagem bem tolerante (pega "me mostre" que estava falhando)
+    const querListar = /(me\s+mostr(a|e)|mostr(ar|a|e)|ver|listar|visualizar|quais|extrato)/.test(
+      mensagemNormalizada
+    );
+
+    const pediuListagemDespesas = pediuDespesas && querListar;
+    const pediuListagemReceitas = pediuReceitas && querListar;
+
+    // ✅ Despesas/Receitas POR MÊS
+    if (pediuListagemDespesas && mesAno) {
+      await DespesasPorMesHandler.executar(
+        telefone,
+        usuario.id,
+        mesAno.mes, // ⚠️ agora mês é 1..12
+        mesAno.ano,
+        querTodas
+      );
+      return;
+    }
+
+    if (pediuListagemReceitas && mesAno) {
+      await ReceitasPorMesHandler.executar(
+        telefone,
+        usuario.id,
+        mesAno.mes, // ⚠️ agora mês é 1..12
+        mesAno.ano,
+        querTodas
+      );
+      return;
+    }
+
+    // ✅ “ver despesas / minhas despesas / meus gastos” (SEM mês) → geral
+    if (
+      mensagemNormalizada.includes("minhas despesas") ||
+      mensagemNormalizada.includes("ver despesas") ||
+      mensagemNormalizada.includes("visualizar despesas") ||
+      mensagemNormalizada.includes("listar despesas") ||
+      mensagemNormalizada.includes("me mostra os gastos") ||
+      mensagemNormalizada.includes("me mostra minhas despesas") ||
+      mensagemNormalizada === "gastos" ||
+      mensagemNormalizada === "despesas"
+    ) {
+      await ListarDespesasHandler.executar(telefone, usuario.id, querTodas);
+      return;
+    }
+
+    // ✅ “ver receitas / minhas receitas” (SEM mês) → geral
+    if (
+      mensagemNormalizada.includes("minhas receitas") ||
+      mensagemNormalizada.includes("ver receitas") ||
+      mensagemNormalizada.includes("visualizar receitas") ||
+      mensagemNormalizada.includes("listar receitas") ||
+      mensagemNormalizada.includes("me mostra minhas receitas") ||
+      mensagemNormalizada === "receitas"
+    ) {
+      await ListarReceitasHandler.executar(telefone, usuario.id, querTodas);
+      return;
+    }
+
+    // ✅ gastos por categoria (atalho)
     if (
       mensagemNormalizada.includes("gastei por categoria") ||
       mensagemNormalizada.includes("gastos por categoria") ||
@@ -164,80 +227,6 @@ export class AssistenteFinanceiro {
       await GastoPorCategoriaHandler.executar(telefone, usuario.id);
       return;
     }
-    if (
-      mensagemNormalizada.includes("minhas receitas") ||
-      mensagemNormalizada.includes("ver receitas") ||
-      mensagemNormalizada.includes("visualizar receitas") ||
-      mensagemNormalizada.includes("listar receitas")
-    ) {
-      await ListarReceitasHandler.executar(telefone, usuario.id);
-      return;
-    }
-
-    // 🔹 Ver despesas detalhadas (atalho direto por texto)
-    if (
-      mensagemNormalizada.includes("minhas despesas") ||
-      mensagemNormalizada.includes("ver despesas") ||
-      mensagemNormalizada.includes("visualizar despesas") ||
-      mensagemNormalizada.includes("listar despesas")
-    ) {
-      await ListarDespesasHandler.executar(telefone, usuario.id);
-      return;
-    }
-    if (
-      mensagemNormalizada.includes("receitas deste mes") ||
-      mensagemNormalizada.includes("receitas desse mes") ||
-      mensagemNormalizada.includes("receitas do mes atual")
-    ) {
-      await RelatorioReceitasPeriodoHandler.receitasDoMesAtual(
-        telefone,
-        usuario.id
-      );
-      return;
-    }
-    if (
-      mensagemNormalizada.includes("despesas deste mes") ||
-      mensagemNormalizada.includes("despesas desse mes") ||
-      mensagemNormalizada.includes("despesas do mes atual") ||
-      mensagemNormalizada.includes("gastos deste mes")
-    ) {
-      await RelatorioDespesasPeriodoHandler.despesasDoMesAtual(
-        telefone,
-        usuario.id
-      );
-      return;
-    }
-
-    // 🔹 Ver receitas detalhadas (atalho direto por texto)
-    if (
-      mensagemNormalizada.includes("minhas receitas") ||
-      mensagemNormalizada.includes("ver receitas") ||
-      mensagemNormalizada.includes("visualizar receitas") ||
-      mensagemNormalizada.includes("listar receitas")
-    ) {
-      await ListarReceitasHandler.executar(
-        telefone,
-        usuario.id,
-        querTodasReceitas 
-      );
-      return;
-    }
-
-    // 🔹 Ver despesas detalhadas (atalho direto por texto)
-    if (
-      mensagemNormalizada.includes("minhas despesas") ||
-      mensagemNormalizada.includes("ver despesas") ||
-      mensagemNormalizada.includes("visualizar despesas") ||
-      mensagemNormalizada.includes("listar despesas")
-    ) {
-      await ListarDespesasHandler.executar(
-        telefone,
-        usuario.id,
-        querTodasDespesas 
-      );
-      return;
-    }
-
 
     // 3) IA Interpretadora (agora com múltiplas ações)
     const interpretacao = await InterpretadorGemini.interpretarMensagem(mensagem, { usuario });
@@ -250,9 +239,7 @@ export class AssistenteFinanceiro {
     let processouAlgumaAcao = false;
 
     for (const intent of intents) {
-
       switch (intent.acao) {
-
         case "registrar_despesa":
           processouAlgumaAcao = true;
           await RegistrarDespesaHandler.executar(
@@ -297,11 +284,7 @@ export class AssistenteFinanceiro {
         case "ver_gastos_da_categoria":
           if (intent.categoria) {
             processouAlgumaAcao = true;
-            await GastosDaCategoriaHandler.executar(
-              telefone,
-              usuario.id,
-              intent.categoria
-            );
+            await GastosDaCategoriaHandler.executar(telefone, usuario.id, intent.categoria);
           }
           break;
 
@@ -355,12 +338,12 @@ export class AssistenteFinanceiro {
           await EnviadorWhatsApp.enviar(
             telefone,
             "📌 *Como posso te ajudar?*\n\n" +
-            "• Registrar *despesa*\n" +
-            "• Registrar *receita*\n" +
-            "• Ver *saldo*\n" +
-            "• Ver *gastos por categoria*\n" +
-            "• Criar *lembrete*\n" +
-            "• Criar *categoria*"
+              "• Registrar *despesa*\n" +
+              "• Registrar *receita*\n" +
+              "• Ver *saldo*\n" +
+              "• Ver *gastos por categoria*\n" +
+              "• Criar *lembrete*\n" +
+              "• Criar *categoria*"
           );
           break;
 

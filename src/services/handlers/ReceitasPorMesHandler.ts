@@ -1,26 +1,30 @@
-// src/services/handlers/ListarReceitasHandler.ts
 import { TransacaoRepository } from "../../repositories/transacao.repository";
 import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
+import { StatusTransacao } from "@prisma/client";
+import { intervaloMes } from "../../utils/periodo";
 
-type TransacaoComCategoria = Awaited<
-  ReturnType<typeof TransacaoRepository.listarDetalhadoPorTipo>
->[number];
-
-export class ListarReceitasHandler {
+export class ReceitasPorMesHandler {
   static async executar(
     telefone: string,
     usuarioId: string,
+    mes: number, // 1..12
+    ano: number,
     mostrarTodas: boolean = false
   ) {
-    const receitas = await TransacaoRepository.listarDetalhadoPorTipo(
+    const { inicio, fim } = intervaloMes(mes, ano);
+
+    const receitas = await TransacaoRepository.filtrar({
       usuarioId,
-      "receita"
-    );
+      tipo: "receita",
+      status: StatusTransacao.concluida,
+      dataInicio: inicio,
+      dataFim: fim,
+    });
 
     if (!receitas.length) {
       await EnviadorWhatsApp.enviar(
         telefone,
-        "📈 Você ainda não tem receitas registradas."
+        `📈 Não encontrei receitas registradas para ${String(mes).padStart(2, "0")}/${ano}.`
       );
       return;
     }
@@ -32,33 +36,25 @@ export class ListarReceitasHandler {
         maximumFractionDigits: 2,
       }).format(valor);
 
-    const limitePadrao = 15; // aqui você escolhe o "limite normal"
+    const total = receitas.reduce((acc, r) => acc + Number(r.valor), 0);
+
+    const limitePadrao = 30;
     const lista = mostrarTodas ? receitas : receitas.slice(0, limitePadrao);
 
     const linhas = lista.map((r) => {
-      const data = r.data
-        ? new Date(r.data).toLocaleDateString("pt-BR")
-        : "-";
+      const data = r.data ? new Date(r.data).toLocaleDateString("pt-BR") : "-";
       const desc = r.descricao ?? "Sem descrição";
-      const categoria = (r as TransacaoComCategoria).categoria?.nome ?? "Sem categoria";
-      return `• ${data} - ${desc} (${categoria}): ${formatar(
-        Number(r.valor)
-      )}`;
+      return `• ${data} - ${desc}: ${formatar(Number(r.valor))}`;
     });
-
-    const total = receitas.reduce(
-      (acc, r) => acc + Number(r.valor),
-      0
-    );
 
     const textoLimite = mostrarTodas
       ? ""
       : `\n\n_(mostrando as ${lista.length} mais recentes)_`;
 
     const mensagem =
-      "📈 *Suas receitas registradas*\n\n" +
+      `📈 *Receitas de ${String(mes).padStart(2, "0")}/${ano}*\n\n` +
       linhas.join("\n") +
-      `\n\n💰 *Total de receitas:* ${formatar(total)}` +
+      `\n\n💰 *Total do mês:* ${formatar(total)}` +
       textoLimite;
 
     await EnviadorWhatsApp.enviar(telefone, mensagem);

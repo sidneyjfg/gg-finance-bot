@@ -1,5 +1,3 @@
-// core/assistenteFinanceiro.ts
-
 import { InterpretadorGemini } from "../ia/interpretadorGemini";
 import { RespostaGemini } from "../ia/respostaGemini";
 
@@ -12,7 +10,6 @@ import { EditarTransacaoHandler } from "../services/handlers/EditarTransacaoHand
 import { ExcluirTransacaoHandler } from "../services/handlers/ExcluirTransacaoHandler";
 import { GastoPorCategoriaHandler } from "../services/handlers/GastoPorCategoriaHandler";
 import { GastosDaCategoriaHandler } from "../services/handlers/GastosDaCategoriaHandler";
-
 import { RelatorioHandler } from "../services/handlers/RelatorioHandler";
 import { PerfilHandler } from "../services/handlers/PerfilHandler";
 import { CadastroUsuarioHandler } from "../services/handlers/CadastroUsuarioHandler";

@@ -215,7 +215,7 @@ export class TransacaoRepository {
           where: { id: { in: categoriaIds } },
         })
         : [];
-
+        
     return grupos
       .map((g) => {
         const total = Number(g._sum.valor ?? 0);

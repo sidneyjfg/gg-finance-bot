@@ -110,43 +110,101 @@ Exemplos:
 ###############################################################
 {
   "acao": "criar_recorrencia",
+  "tipo": "receita" | "despesa" | null,
   "valor": number | null,
   "descricao": string | null,
   "frequencia": "diaria" | "semanal" | "mensal" | "anual" | null,
-  "data": number | null   // se for mensal e tiver dia fixo, ex: 15
+
+  // REGRAS MENSAIS (quando frequencia = "mensal")
+  "regraMensal": "DIA_DO_MES" | "N_DIA_UTIL" | null,
+  "diaDoMes": number | null,   // 1 a 31
+  "nDiaUtil": number | null    // 1 a 23 (ex: 5º dia útil)
 }
 
 REGRAS PARA RECORRÊNCIA:
-→ Sempre que houver palavras indicando repetição:
+→ Use criar_recorrencia sempre que houver repetição:
+- "todo dia", "diariamente", "todos os dias"
+- "toda semana", "semanal", "toda segunda", "todo domingo"
+- "todo mês", "mensal", "mensalmente"
+- "todo ano", "anualmente"
 
-Frequência diária:
-- todo dia
-- diariamente
-- dia a dia
-- todos os dias
+⚠️ DIFERENCIAR RECEITA vs DESPESA:
+- Se o usuário indicar que É UMA ENTRADA (ex: "recebo", "vou receber", "salário", "pagamento", "cai na conta", "holerite"):
+  → tipo = "receita"
+- Caso contrário, por padrão:
+  → tipo = "despesa"
 
-Frequência semanal:
-- todo domingo
-- toda segunda
-- semanal
-- toda semana
+⚠️ REGRAS MENSAIS IMPORTANTES:
+1) Dia fixo:
+- "todo mês dia 1"
+- "todo dia 10 do mês"
+→ frequencia = "mensal"
+→ regraMensal = "DIA_DO_MES"
+→ diaDoMes = (número do dia)
 
-Frequência mensal:
-- mensal
-- mensalmente
-- todo mês
-- todo dia 5
-- todo dia 10
+2) Dia útil:
+- "todo mês no 5º dia útil"
+- "quinto dia útil"
+→ frequencia = "mensal"
+→ regraMensal = "N_DIA_UTIL"
+→ nDiaUtil = 5
 
-Frequência anual:
-- todo ano
-- anualmente
+3) Se for mensal e o usuário NÃO disser dia:
+→ regraMensal = null, diaDoMes = null, nDiaUtil = null
+(o sistema vai perguntar depois)
 
-Exemplos:
-- "aluguel 1500 mensal"
-- "todo mês pagar 200 da internet"
-- "todo dia 5 lembrar do cartão"
-- "quero colocar uma despesa recorrente"
+OBS:
+- Não invente valores.
+- Se não encontrar valor, deixe valor = null.
+- Se não tiver certeza da frequência, frequencia = null.
+
+EXEMPLOS:
+
+"recebo meu salário todo mês dia 1 3200"
+[
+  {
+    "acao": "criar_recorrencia",
+    "tipo": "receita",
+    "valor": 3200,
+    "descricao": "salário",
+    "frequencia": "mensal",
+    "regraMensal": "DIA_DO_MES",
+    "diaDoMes": 1,
+    "nDiaUtil": null
+  }
+]
+
+"recebo salário todo mês no 5º dia útil 3200"
+[
+  {
+    "acao": "criar_recorrencia",
+    "tipo": "receita",
+    "valor": 3200,
+    "descricao": "salário",
+    "frequencia": "mensal",
+    "regraMensal": "N_DIA_UTIL",
+    "diaDoMes": null,
+    "nDiaUtil": 5
+  }
+]
+
+"todo mês pagar 200 da internet dia 10"
+[
+  {
+    "acao": "criar_recorrencia",
+    "tipo": "despesa",
+    "valor": 200,
+    "descricao": "internet",
+    "frequencia": "mensal",
+    "regraMensal": "DIA_DO_MES",
+    "diaDoMes": 10,
+    "nDiaUtil": null
+  }
+]
+
+REGRA:
+- Se a frase indicar REPETIÇÃO (ex: "todo mês", "mensal", "toda semana") então NÃO use "registrar_receita".
+  Use "criar_recorrencia" com tipo = "receita".
 
 ###############################################################
 # 6) Editar Transação

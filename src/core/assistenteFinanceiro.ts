@@ -21,6 +21,7 @@ import { ExcluirLembreteHandler } from "../services/handlers/ExcluirLembreteHand
 import { ListarDespesasHandler } from "../services/handlers/ListarDespesaHandler";
 import { ListarReceitasHandler } from "../services/handlers/ListarReceitaHandler";
 import { RecorrenciaHandler } from "../services/handlers/RecorrenciaHandler";
+import { ListarTransacoesHandler } from "../services/handlers/ListarTransacoesHandler";
 import { extrairMesEAno } from "../utils/periodo";
 
 import { DespesasPorMesHandler } from "../services/handlers/DespesasPorMesHandler";
@@ -168,8 +169,7 @@ export class AssistenteFinanceiro {
       mensagemNormalizada
     );
 
-    const pediuListagemDespesas = pediuDespesas && querListar;
-    const pediuListagemReceitas = pediuReceitas && querListar;
+    const querUltimas = /(ultimas|ultimos|recentes|recente)/.test(mensagemNormalizada);
 
     // ✅ Despesas/Receitas POR MÊS
     // ✅ Se a pessoa falou "despesas/gastos" e citou mês (atual, passado, novembro, etc.)
@@ -203,6 +203,11 @@ export class AssistenteFinanceiro {
 
       await DespesasPorMesHandler.executar(telefone, usuario.id, m, a, querTodas);
       await ReceitasPorMesHandler.executar(telefone, usuario.id, m, a, querTodas);
+      return;
+    }
+
+    if (pediuTransacoes && !mesAno) {
+      await ListarTransacoesHandler.executar(telefone, usuario.id, querUltimas ? 10 : 10);
       return;
     }
 
@@ -314,10 +319,14 @@ export class AssistenteFinanceiro {
             intent.descricao ?? null,
             intent.valor ?? null,
             intent.frequencia ?? null,
-            intent.data ?? null
+
+            // ✅ novos campos esperados da IA:
+            (intent.tipo as any) ?? null,              // "receita" | "despesa"
+            (intent.regraMensal as any) ?? null,       // "DIA_DO_MES" | "N_DIA_UTIL"
+            (intent.diaDoMes as any) ?? intent.data ?? null, // compat: você usava intent.data como dia
+            (intent.nDiaUtil as any) ?? null
           );
           break;
-
 
         case "ver_gastos_da_categoria":
           if (intent.categoria) {

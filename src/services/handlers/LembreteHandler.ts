@@ -2,6 +2,7 @@ import { LembreteRepository } from "../../repositories/lembrete.repository";
 import { ContextoRepository } from "../../repositories/contexto.repository";
 import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
 import { extrairDiaSimples, normalizarMes, parseDataPtBr } from "../../utils/parseDatabr";
+import { extrairMesEAno } from "../../utils/periodo";
 
 export class LembreteHandler {
 
@@ -298,18 +299,39 @@ export class LembreteHandler {
     }
 
     // Se não for uma data completa, interpreta só o mês ("novembro", "11")
-    const mes = normalizarMes(mesMsg);
-    if (mes === null) {
-      return EnviadorWhatsApp.enviar(telefone, "❌ Não entendi o mês.");
+    // ✅ NOVO: entende "desse mês", "mês passado", "mês 9", "novembro 2025"...
+    const mesAno = extrairMesEAno(mesMsg);
+
+    let mesIndex: number | null = null; // 0..11
+    let anoFinal: number | null = null;
+
+    if (mesAno) {
+      // extrairMesEAno retorna mes 1..12
+      mesIndex = mesAno.mes - 1;
+      anoFinal = mesAno.ano;
+    } else {
+      // fallback antigo: interpreta só o mês ("novembro", "11")
+      mesIndex = normalizarMes(mesMsg); 
+      if (mesIndex === null) {
+        return EnviadorWhatsApp.enviar(
+          telefone,
+          "❌ Não entendi o mês. Ex: *desse mês*, *mês passado* ou *janeiro*."
+        );
+      }
+      anoFinal = new Date().getFullYear();
     }
 
+    // Monta a data com o dia do contexto
     const hoje = new Date();
-    let ano = hoje.getFullYear();
-    let data = new Date(ano, mes, dia);
+    let data = new Date(anoFinal, mesIndex, dia);
 
-    if (data < hoje) {
-      ano += 1;
-      data = new Date(ano, mes, dia);
+    // ✅ Regra: se usuário disse explicitamente "mês passado", não joga pro ano seguinte.
+    // (extrairMesEAno já devolve o ano certo, então aqui só ajusta quando veio do fallback)
+    if (!mesAno) {
+      // fallback antigo: se ficou no passado, joga pro ano seguinte
+      if (data < hoje) {
+        data = new Date(anoFinal + 1, mesIndex, dia);
+      }
     }
 
     await LembreteRepository.criar({

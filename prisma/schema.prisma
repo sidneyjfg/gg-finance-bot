@@ -73,6 +73,10 @@ enum StatusTransacao {
   cancelada
 }
 
+enum RegraMensal {
+  DIA_DO_MES
+  N_DIA_UTIL
+}
 
 model Recorrencia {
   id           String   @id @default(uuid())
@@ -81,6 +85,10 @@ model Recorrencia {
   frequencia   Frequencia
   intervalo    Int      @default(1)
   proximaCobra DateTime
+
+  regraMensal  RegraMensal?
+  diaDoMes     Int?
+  nDiaUtil     Int?
 
   usuario    Usuario   @relation(fields: [usuarioId], references: [id])
   transacao  Transacao @relation(fields: [transacaoId], references: [id])

@@ -22,6 +22,7 @@ import { ListarDespesasHandler } from "../services/handlers/ListarDespesaHandler
 import { ListarReceitasHandler } from "../services/handlers/ListarReceitaHandler";
 import { RecorrenciaHandler } from "../services/handlers/RecorrenciaHandler";
 import { ListarTransacoesHandler } from "../services/handlers/ListarTransacoesHandler";
+import { ListarLembretesHandler } from "../services/handlers/ListarLembretesHandler";
 import { extrairMesEAno } from "../utils/periodo";
 
 import { DespesasPorMesHandler } from "../services/handlers/DespesasPorMesHandler";
@@ -131,6 +132,11 @@ export class AssistenteFinanceiro {
         case "confirmar_criar_recorrencia":
           return RecorrenciaHandler.confirmarCriacao(telefone, usuario!.id, mensagem, contexto.dados);
 
+        // 📌 Recorrência (informar valor)
+        case "informar_valor_recorrencia":
+          return RecorrenciaHandler.salvarValor(telefone, usuario!.id, mensagem, contexto.dados);
+
+
       }
     }
 
@@ -155,8 +161,27 @@ export class AssistenteFinanceiro {
     // ✅ agora extrai "mês 11", "mês passado", "esse mês", "novembro", etc.
     const mesAno = extrairMesEAno(mensagem);
 
-    // detectar pedido de despesas/gastos
-    const pediuDespesas = /(despesa|despesas|gasto|gastos)/.test(mensagemNormalizada);
+    // detectar pedido de lembretes (consulta, nÇœo criaÇõÇœo)
+    const pediuLembretes = /\b(lembrete(s)?|aviso(s)?|recordatori(o|os)|agenda|compromissos?|vencimentos?)\b/.test(
+      mensagemNormalizada
+    );
+    const querListarLembretes =
+      /(ver|listar|mostr(ar|a|e)|exibir|quais|tem|tenho|existe(m)?|algum|alguns|minh(a|as)|meu(s)?)/.test(
+        mensagemNormalizada
+      ) ||
+      mensagemNormalizada === "lembretes" ||
+      mensagemNormalizada === "lembrete" ||
+      mensagemNormalizada === "avisos" ||
+      mensagemNormalizada === "agenda";
+    const querCriarLembrete =
+      /(me\s+lembra|me\s+lembre|lembrar|lembre[- ]?me|me\s+avisa|me\s+avise|avisar|recordar|anota|anotar|agendar|agenda(.*)pra)/.test(
+        mensagemNormalizada
+      );
+
+    // detectar pedido de despesas/gastos (inclui verbos: "gastei", "gastou", etc.)
+    const pediuDespesas = /\b(despesa|despesas|gasto|gastos|gastar|gastei|gastou|gastando|gastamos|gastam)\b/.test(
+      mensagemNormalizada
+    );
 
     // detectar pedido de receitas/entradas
     const pediuReceitas = /(receita|receitas|entrada|entradas)/.test(mensagemNormalizada);
@@ -192,6 +217,16 @@ export class AssistenteFinanceiro {
         mesAno.mes,
         mesAno.ano,
         querTodas
+      );
+      return;
+    }
+
+    if (pediuLembretes && !querCriarLembrete && (querListarLembretes || mesAno)) {
+      await ListarLembretesHandler.executar(
+        telefone,
+        usuario.id,
+        mesAno?.mes,
+        mesAno?.ano
       );
       return;
     }

@@ -45,6 +45,23 @@ export class LembreteRepository {
     });
   }
 
+  static async listarPorPeriodo(
+    usuarioId: string,
+    inicio: Date,
+    fim: Date
+  ): Promise<Lembrete[]> {
+    return prisma.lembrete.findMany({
+      where: {
+        usuarioId,
+        dataAlvo: {
+          gte: inicio,
+          lt: fim,
+        },
+      },
+      orderBy: { dataAlvo: "asc" },
+    });
+  }
+
   static async buscarPorTextoEData(
     usuarioId: string,
     texto: string,

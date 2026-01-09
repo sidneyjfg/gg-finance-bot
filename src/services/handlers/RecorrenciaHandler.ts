@@ -47,8 +47,8 @@ export class RecorrenciaHandler {
       return EnviadorWhatsApp.enviar(
         telefone,
         "❌ Não entendi o que você quer tornar recorrente. Ex:\n" +
-          "• “pagar academia todo mês dia 10 130”\n" +
-          "• “recebo salário todo mês dia 1 3200”"
+        "• “pagar academia todo mês dia 10 130”\n" +
+        "• “recebo salário todo mês dia 1 3200”"
       );
     }
 
@@ -59,21 +59,32 @@ export class RecorrenciaHandler {
       );
     }
 
+    // ✅ validações mensais (dia fixo OU n-ésimo dia útil)
+    let regraFinal: RegraMensal | null = regraMensal ?? null;
+    let diaFinal: number | null = null;
+    let nDiaFinal: number | null = null;
+
     // ✅ tipo default: se não vier, assume despesa (mantém compatível com seu fluxo atual)
     const tipoFinal: TipoTransacao = tipo ?? "despesa";
 
     // ✅ valor obrigatório (pra recorrência fazer sentido)
     if (valor === null || Number.isNaN(Number(valor))) {
+      await ContextoRepository.definir(telefone, "informar_valor_recorrencia", {
+        // guarda tudo que já temos, pra próxima msg preencher só o valor
+        descricao,
+        frequencia,
+        tipo: tipoFinal,
+        regraMensal: regraFinal,
+        diaDoMes: diaFinal,
+        nDiaUtil: nDiaFinal,
+      });
+
       return EnviadorWhatsApp.enviar(
         telefone,
         `💰 Qual o valor dessa ${tipoFinal === "receita" ? "receita" : "despesa"} recorrente? Ex: “3200”`
       );
     }
 
-    // ✅ validações mensais (dia fixo OU n-ésimo dia útil)
-    let regraFinal: RegraMensal | null = regraMensal ?? null;
-    let diaFinal: number | null = null;
-    let nDiaFinal: number | null = null;
 
     if (frequencia === "mensal") {
       // Se veio "nDiaUtil", força regra N_DIA_UTIL
@@ -111,9 +122,9 @@ export class RecorrenciaHandler {
         return EnviadorWhatsApp.enviar(
           telefone,
           "📅 Essa recorrência mensal é em *dia fixo* ou *dia útil*?\n\n" +
-            "Responda:\n" +
-            "• “dia 1” (fixo)\n" +
-            "• “5º dia útil”"
+          "Responda:\n" +
+          "• “dia 1” (fixo)\n" +
+          "• “5º dia útil”"
         );
       }
     }
@@ -145,8 +156,8 @@ export class RecorrenciaHandler {
       frequencia !== "mensal"
         ? ""
         : regraFinal === "N_DIA_UTIL"
-        ? ` (no ${nDiaFinal}º dia útil)`
-        : ` (dia ${diaFinal})`;
+          ? ` (no ${nDiaFinal}º dia útil)`
+          : ` (dia ${diaFinal})`;
 
     const resumo =
       `Beleza. Vou criar essa recorrência de *${titulo}*:\n\n` +
@@ -266,21 +277,106 @@ export class RecorrenciaHandler {
       frequencia !== "mensal"
         ? ""
         : regraMensal === "N_DIA_UTIL"
-        ? ` (no ${nDiaUtil}º dia útil)`
-        : ` (dia ${diaDoMes})`;
+          ? ` (no ${nDiaUtil}º dia útil)`
+          : ` (dia ${diaDoMes})`;
 
     return EnviadorWhatsApp.enviar(
       telefone,
       `🔁 Recorrência criada!\n\n` +
-        `📌 *${descricao}*\n` +
-        `📌 Tipo: *${titulo}*\n` +
-        `💰 Valor: *R$ ${formatarDinheiro(valor)}*\n` +
-        `⏳ Frequência: *${frequencia.toUpperCase()}*${regraTxt}\n` +
-        `📆 Próxima cobrança: *${this.formatar(proximaCobranca)}*\n\n` 
+      `📌 *${descricao}*\n` +
+      `📌 Tipo: *${titulo}*\n` +
+      `💰 Valor: *R$ ${formatarDinheiro(valor)}*\n` +
+      `⏳ Frequência: *${frequencia.toUpperCase()}*${regraTxt}\n` +
+      `📆 Próxima cobrança: *${this.formatar(proximaCobranca)}*\n\n`
     );
   }
+
+  static extrairNumero(txt: string): number | null {
+    if (!txt) return null;
+
+    // tira R$, espaços, etc.
+    let t = txt
+      .toLowerCase()
+      .replace(/r\$\s?/g, "")
+      .replace(/\s+/g, "")
+      .replace(/reais|real|conto|contos/g, "");
+
+    // se tiver "3.200,50" -> "3200.50"
+    // remove pontos de milhar e troca vírgula por ponto
+    // cuidado: se o usuário mandar "160.50" já tá ok
+    if (t.includes(",") && t.includes(".")) {
+      t = t.replace(/\./g, "").replace(",", ".");
+    } else if (t.includes(",")) {
+      t = t.replace(",", ".");
+    }
+
+    const match = t.match(/-?\d+(\.\d+)?/);
+    if (!match) return null;
+
+    const n = Number(match[0]);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  static async salvarValor(
+    telefone: string,
+    usuarioId: string,
+    mensagem: string,
+    dados: Record<string, any>
+  ) {
+    const valor = this.extrairNumero(mensagem);
+
+    if (valor === null || valor <= 0) {
+      return EnviadorWhatsApp.enviar(
+        telefone,
+        "❌ Não consegui entender o valor. Me manda só o número. Ex: *160* ou *160,50*"
+      );
+    }
+
+    const descricao = (dados?.descricao as string) ?? null;
+    const frequencia = (dados?.frequencia as Frequencia) ?? null;
+    const tipo = (dados?.tipo as TipoTransacao) ?? "despesa";
+    const regraMensal = (dados?.regraMensal as RegraMensal) ?? null;
+    const diaDoMes = (dados?.diaDoMes as number) ?? null;
+    const nDiaUtil = (dados?.nDiaUtil as number) ?? null;
+
+    // agora que temos o valor, manda pro fluxo normal de confirmação
+    await ContextoRepository.definir(telefone, "confirmar_criar_recorrencia", {
+      descricao,
+      valor,
+      frequencia,
+      tipo,
+      regraMensal,
+      diaDoMes,
+      nDiaUtil,
+    });
+
+    // reaproveita sua mensagem de confirmação (padrão do iniciarCriacao)
+    const titulo = tipo === "receita" ? "receita" : "despesa";
+    const nDia = Number(nDiaUtil);
+    const dia = Number(diaDoMes);
+
+    const regraTxt =
+      frequencia !== "mensal"
+        ? ""
+        : regraMensal === "N_DIA_UTIL"
+          ? (Number.isFinite(nDia) && nDia > 0 ? ` (no ${nDia}º dia útil)` : "")
+          : (Number.isFinite(dia) && dia > 0 ? ` (dia ${dia})` : "");
+
+
+    const resumo =
+      `Beleza. Vou criar essa recorrência de *${titulo}*:\n\n` +
+      `📌 *${descricao ?? "sem descrição"}*\n` +
+      `💰 *R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}*\n` +
+      `⏳ *${(frequencia ?? "").toUpperCase()}*${regraTxt}\n\n` +
+      `Confirma? (Sim/Não)`;
+
+    return EnviadorWhatsApp.enviar(telefone, resumo);
+  }
+
 
   static formatar(data: Date): string {
     return data.toLocaleDateString("pt-BR");
   }
 }
+
+

@@ -32,7 +32,7 @@ export class CategoriaRepository {
       where: { usuarioId },
     });
 
-    return (
+    return (  
       categorias.find(
         (c) => c.nome.trim().toLowerCase() === nomeNormalizado
       ) ?? null

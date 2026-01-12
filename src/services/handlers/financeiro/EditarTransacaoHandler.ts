@@ -1,6 +1,7 @@
-import { TransacaoRepository } from "../../repositories/transacao.repository";
-import { ContextoRepository } from "../../repositories/contexto.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
+import { ContextoRepository } from "../../../repositories/contexto.repository";
+import { TransacaoRepository } from "../../../repositories/transacao.repository";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
+
 
 export class EditarTransacaoHandler {
 

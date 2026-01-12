@@ -1,8 +1,8 @@
-import { TransacaoRepository } from "../../repositories/transacao.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
-import { validarValorTransacao } from "../../utils/seguranca.utils";
-import { UsuarioRepository } from "../../repositories/usuario.repository";
-import { CategoriaAutoService } from "../CategoriaAutoService";
+import { TransacaoRepository } from "../../../repositories/transacao.repository";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
+import { validarValorTransacao } from "../../../utils/seguranca.utils";
+import { UsuarioRepository } from "../../../repositories/usuario.repository";
+import { CategoriaAutoService } from "../../CategoriaAutoService";
 
 export class RegistrarReceitaHandler {
 

@@ -1,29 +1,29 @@
 import { InterpretadorGemini } from "../ia/interpretadorGemini";
 import { RespostaGemini } from "../ia/respostaGemini";
 
-import { RegistrarDespesaHandler } from "../services/handlers/RegistrarDespesaHandler";
-import { RegistrarReceitaHandler } from "../services/handlers/RegistrarReceitaHandler";
-import { CategoriaHandler } from "../services/handlers/CategoriaHandler";
-import { LembreteHandler } from "../services/handlers/LembreteHandler";
+import { RegistrarDespesaHandler } from "../services/handlers/financeiro/RegistrarDespesaHandler";
+import { RegistrarReceitaHandler } from "../services/handlers/financeiro/RegistrarReceitaHandler";
+import { LembreteHandler } from "../services/handlers/lembrete/LembreteHandler";
 import { AgendamentoHandler } from "../services/handlers/AgendamentoHandler";
-import { EditarTransacaoHandler } from "../services/handlers/EditarTransacaoHandler";
-import { ExcluirTransacaoHandler } from "../services/handlers/ExcluirTransacaoHandler";
-import { GastoPorCategoriaHandler } from "../services/handlers/GastoPorCategoriaHandler";
-import { GastosDaCategoriaHandler } from "../services/handlers/GastosDaCategoriaHandler";
-import { RelatorioHandler } from "../services/handlers/RelatorioHandler";
+import { EditarTransacaoHandler } from "../services/handlers/financeiro/EditarTransacaoHandler";
+
 import { PerfilHandler } from "../services/handlers/PerfilHandler";
 import { CadastroUsuarioHandler } from "../services/handlers/CadastroUsuarioHandler";
 
 import { UsuarioRepository } from "../repositories/usuario.repository";
 import { ContextoRepository } from "../repositories/contexto.repository";
 import { EnviadorWhatsApp } from "../services/EnviadorWhatsApp";
-import { ExcluirLembreteHandler } from "../services/handlers/ExcluirLembreteHandler";
-import { ListarDespesasHandler } from "../services/handlers/ListarDespesaHandler";
-import { ListarReceitasHandler } from "../services/handlers/ListarReceitaHandler";
-import { RecorrenciaHandler } from "../services/handlers/RecorrenciaHandler";
-import { ListarTransacoesHandler } from "../services/handlers/ListarTransacoesHandler";
-import { ListarLembretesHandler } from "../services/handlers/ListarLembretesHandler";
+import { ExcluirLembreteHandler } from "../services/handlers/lembrete/ExcluirLembreteHandler";
+import { ListarDespesasHandler } from "../services/handlers/financeiro/ListarDespesaHandler";
+
 import { detectores } from "../utils/detectoresDeIntencao";
+import { RecorrenciaHandler } from "../services/handlers/agendamentos/RecorrenciaHandler";
+import { ExcluirTransacaoHandler } from "../services/handlers/financeiro/ExcluirTransacaoHandler";
+import { GastoPorCategoriaHandler } from "../services/handlers/relatorios/GastoPorCategoriaHandler";
+import { GastosDaCategoriaHandler } from "../services/handlers/relatorios/GastosDaCategoriaHandler";
+import { RelatorioHandler } from "../services/handlers/relatorios/RelatorioHandler";
+import { CategoriaHandler } from "../services/handlers/financeiro/CategoriaHandler";
+import { ListarReceitasHandler } from "../services/handlers/financeiro/ListarReceitaHandler";
 
 
 export class AssistenteFinanceiro {

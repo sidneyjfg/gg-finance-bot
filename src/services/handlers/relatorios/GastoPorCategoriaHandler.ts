@@ -1,6 +1,6 @@
-import { TransacaoRepository } from "../../repositories/transacao.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
-import { intervaloMes } from "../../utils/periodo";
+import { TransacaoRepository } from "../../../repositories/transacao.repository";
+import { intervaloMes } from "../../../utils/periodo";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
 
 export class GastoPorCategoriaHandler {
   static async executar(

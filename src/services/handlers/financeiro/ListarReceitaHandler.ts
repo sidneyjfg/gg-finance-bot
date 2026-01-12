@@ -1,6 +1,6 @@
-// src/services/handlers/ListarReceitasHandler.ts
-import { TransacaoRepository } from "../../repositories/transacao.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
+import { TransacaoRepository } from "../../../repositories/transacao.repository";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
+
 
 type TransacaoComCategoria = Awaited<
   ReturnType<typeof TransacaoRepository.listarDetalhadoPorTipo>

@@ -1,9 +1,10 @@
-import { TransacaoRepository } from "../../repositories/transacao.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
 import { StatusTransacao } from "@prisma/client";
-import { intervaloMes } from "../../utils/periodo";
+import { TransacaoRepository } from "../../../repositories/transacao.repository";
+import { intervaloMes } from "../../../utils/periodo";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
 
-export class DespesasPorMesHandler {
+
+export class ReceitasPorMesHandler {
   static async executar(
     telefone: string,
     usuarioId: string,
@@ -13,18 +14,18 @@ export class DespesasPorMesHandler {
   ) {
     const { inicio, fim } = intervaloMes(mes, ano);
 
-    const despesas = await TransacaoRepository.filtrar({
+    const receitas = await TransacaoRepository.filtrar({
       usuarioId,
-      tipo: "despesa",
+      tipo: "receita",
       status: StatusTransacao.concluida,
       dataInicio: inicio,
       dataFim: fim,
     });
 
-    if (!despesas.length) {
+    if (!receitas.length) {
       await EnviadorWhatsApp.enviar(
         telefone,
-        `💸 Não encontrei despesas registradas para ${String(mes).padStart(2, "0")}/${ano}.`
+        `📈 Não encontrei receitas registradas para ${String(mes).padStart(2, "0")}/${ano}.`
       );
       return;
     }
@@ -36,15 +37,15 @@ export class DespesasPorMesHandler {
         maximumFractionDigits: 2,
       }).format(valor);
 
-    const total = despesas.reduce((acc, d) => acc + Number(d.valor), 0);
+    const total = receitas.reduce((acc, r) => acc + Number(r.valor), 0);
 
     const limitePadrao = 30;
-    const lista = mostrarTodas ? despesas : despesas.slice(0, limitePadrao);
+    const lista = mostrarTodas ? receitas : receitas.slice(0, limitePadrao);
 
-    const linhas = lista.map((d) => {
-      const data = d.data ? new Date(d.data).toLocaleDateString("pt-BR") : "-";
-      const desc = d.descricao ?? "Sem descrição";
-      return `• ${data} - ${desc}: ${formatar(Number(d.valor))}`;
+    const linhas = lista.map((r) => {
+      const data = r.data ? new Date(r.data).toLocaleDateString("pt-BR") : "-";
+      const desc = r.descricao ?? "Sem descrição";
+      return `• ${data} - ${desc}: ${formatar(Number(r.valor))}`;
     });
 
     const textoLimite = mostrarTodas
@@ -52,7 +53,7 @@ export class DespesasPorMesHandler {
       : `\n\n_(mostrando as ${lista.length} mais recentes)_`;
 
     const mensagem =
-      `💸 *Despesas de ${String(mes).padStart(2, "0")}/${ano}*\n\n` +
+      `📈 *Receitas de ${String(mes).padStart(2, "0")}/${ano}*\n\n` +
       linhas.join("\n") +
       `\n\n💰 *Total do mês:* ${formatar(total)}` +
       textoLimite;

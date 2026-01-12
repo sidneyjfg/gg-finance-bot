@@ -1,6 +1,7 @@
-import { CategoriaRepository } from "../../repositories/categoria.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
-import { ContextoRepository } from "../../repositories/contexto.repository";
+import { CategoriaRepository } from "../../../repositories/categoria.repository";
+import { ContextoRepository } from "../../../repositories/contexto.repository";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
+
 
 export class CategoriaHandler {
 

@@ -1,8 +1,9 @@
 import { Frequencia, RegraMensal, TipoTransacao } from "@prisma/client";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
-import { prisma } from "../../infra/prisma";
-import { ContextoRepository } from "../../repositories/contexto.repository";
-import { calcularProximaCobranca } from "../../utils/recorrencia";
+import { prisma } from "../../../infra/prisma";
+import { ContextoRepository } from "../../../repositories/contexto.repository";
+import { calcularProximaCobranca } from "../../../utils/recorrencia";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
+
 
 function normalizar(txt: string) {
   return txt

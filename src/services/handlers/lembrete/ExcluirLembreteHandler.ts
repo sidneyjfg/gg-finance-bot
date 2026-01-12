@@ -1,7 +1,7 @@
-import { LembreteRepository } from "../../repositories/lembrete.repository";
-import { ContextoRepository } from "../../repositories/contexto.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
-import { parseDataPtBr } from "../../utils/parseDatabr";
+import { LembreteRepository } from "../../../repositories/lembrete.repository";
+import { ContextoRepository } from "../../../repositories/contexto.repository";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
+import { parseDataPtBr } from "../../../utils/parseDatabr";
 import { Lembrete } from "@prisma/client";
 
 export class ExcluirLembreteHandler {

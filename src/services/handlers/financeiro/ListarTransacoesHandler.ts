@@ -1,5 +1,5 @@
-import { TransacaoRepository } from "../../repositories/transacao.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
+import { TransacaoRepository } from "../../../repositories/transacao.repository";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
 
 export class ListarTransacoesHandler {
   static async executar(telefone: string, usuarioId: string, limite: number = 10) {

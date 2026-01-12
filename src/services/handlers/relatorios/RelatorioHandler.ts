@@ -1,9 +1,8 @@
-// services/handlers/RelatorioHandler.ts
-import { TransacaoRepository } from "../../repositories/transacao.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
-import { LembreteRepository } from "../../repositories/lembrete.repository";
-import { LembreteClassifier } from "../../utils/LembreteClassifier";
-import { prisma } from "../../infra/prisma";
+import { prisma } from "../../../infra/prisma";
+import { LembreteRepository } from "../../../repositories/lembrete.repository";
+import { TransacaoRepository } from "../../../repositories/transacao.repository";
+import { LembreteClassifier } from "../../../utils/LembreteClassifier";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
 
 export class RelatorioHandler {
   static formatar(valor: number) {

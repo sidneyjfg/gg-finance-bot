@@ -1,6 +1,7 @@
-import { LembreteRepository } from "../../repositories/lembrete.repository";
-import { EnviadorWhatsApp } from "../EnviadorWhatsApp";
-import { intervaloMes } from "../../utils/periodo";
+import { LembreteRepository } from "../../../repositories/lembrete.repository";
+import { intervaloMes } from "../../../utils/periodo";
+import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
+
 
 export class ListarLembretesHandler {
   private static formatarValor(valor: number) {

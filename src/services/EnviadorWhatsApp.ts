@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { client } from "../whatsapp/bot";
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -8,7 +9,7 @@ export class EnviadorWhatsApp {
       await sleep(1000); // 🔥 essencial para @lid
 
       const chat = await client.getChatById(destino);
-      console.log(`Chat Encontrado: ${chat}`)
+      logger.info(`Chat Encontrado: ${chat}`);
       // neutraliza sendSeen interno
       // @ts-ignore
       chat.sendSeen = async () => {};

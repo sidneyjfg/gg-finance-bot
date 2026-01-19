@@ -32,41 +32,44 @@ export function startWhatsAppBot() {
   client.on("auth_failure", () => logger.error("❌ Falha na autenticação"));
 
   client.on("message", async (msg) => {
-    const telefone = msg.from.replace("@c.us", "");
+
+    // ❌ ignora grupos
+    if (msg.from.endsWith("@g.us")) return;
+
     const mensagem = msg.body;
 
-    console.log(`📩 ${telefone}: ${mensagem}`);
+    // 🔑 CHAT REAL (resolve @lid corretamente)
+    const chat = await msg.getChat();
+    const chatId = chat.id._serialized;
 
-    // ❌ Ignora mensagens de grupos
-    if (msg.from.includes("@g.us")) {
+    // garante que é contato individual
+    if (!chatId.endsWith("@c.us")) {
+      console.log("⚠️ Chat inválido ignorado:", chatId);
       return;
     }
 
+    const telefone = chatId.replace("@c.us", "");
+
+    console.log(`📩 ${telefone}: ${mensagem}`);
     console.log("Aguardando nova mensagem");
-    // ✔️ Processa com a IA
+
     try {
+      // ✔️ fluxo normal do assistente
       await BotService.processarMensagem(telefone, mensagem);
+
     } catch (error: any) {
       const mensagemErro = error?.message || "";
       const status = error?.status || error?.code;
 
-      // 🚦 RATE LIMIT (429)
       if (status === 429 || mensagemErro.includes("429")) {
-        console.warn("🚦 Rate limit atingido:", {
-          telefone,
-          mensagem: mensagemErro
-        });
-
         await EnviadorWhatsApp.enviar(
           telefone,
           "⏳ *Calma lá!* Você está usando o assistente muito rápido.\n" +
-          "Para evitar custos e instabilidade, aguarde alguns instantes e tente novamente 🙂"
+          "Aguarde alguns instantes 🙂"
         );
-
         return;
       }
 
-      // 🤖 Erros relacionados à IA
       const erroIA =
         mensagemErro.includes("API key") ||
         mensagemErro.includes("generative") ||
@@ -76,29 +79,19 @@ export function startWhatsAppBot() {
         status === 503;
 
       if (erroIA) {
-        console.error("🤖 Erro na IA:", {
-          status,
-          mensagem: mensagemErro
-        });
-
         await EnviadorWhatsApp.enviar(
           telefone,
           "🤖 *IA temporariamente indisponível.*\n" +
-          "Estamos ajustando as engrenagens aqui. Tente novamente em instantes."
+          "Tente novamente em instantes."
         );
-
         return;
       }
 
-      // ❌ Erro genérico
-      console.error("❌ Erro ao processar mensagem:", error?.message || error);
-
       await EnviadorWhatsApp.enviar(
         telefone,
-        "❌ Ocorreu um erro inesperado.\nSe persistir, tente novamente mais tarde."
+        "❌ Ocorreu um erro inesperado.\nTente novamente mais tarde."
       );
     }
-
   });
 
   client.initialize();

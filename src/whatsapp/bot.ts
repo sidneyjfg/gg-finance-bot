@@ -38,23 +38,26 @@ export function startWhatsAppBot() {
 
     const mensagem = msg.body;
 
-    // 🔑 CONTATO REAL (funciona com @lid)
-    const contact = await msg.getContact();
-    const contactId = contact.id._serialized;
+    // 🔑 ID REAL DO CONTATO (compatível com @lid)
+    let rawId = msg.author || msg.from;
 
-    // segurança extra
-    if (!contactId.endsWith("@c.us")) {
-      console.log("⚠️ Contact inválido ignorado:", contactId);
+    // remove sufixos inválidos
+    if (rawId.endsWith("@lid")) {
+      rawId = rawId.replace("@lid", "@c.us");
+    }
+
+    // segurança final
+    if (!rawId.endsWith("@c.us")) {
+      console.log("⚠️ ID inválido ignorado:", rawId);
       return;
     }
 
-    const telefone = contactId.replace("@c.us", "");
+    const telefone = rawId.replace("@c.us", "");
 
     console.log(`📩 ${telefone}: ${mensagem}`);
     console.log("Aguardando nova mensagem");
 
     try {
-      // ✔️ fluxo normal do assistente
       await BotService.processarMensagem(telefone, mensagem);
 
     } catch (error: any) {

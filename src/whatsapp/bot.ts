@@ -42,13 +42,6 @@ export function startWhatsAppBot() {
       return;
     }
 
-    // 🔒 Número autorizado (SOMENTE VOCÊ)
-    const numeroAutorizado = "558597280182"; // <- SEU NÚMERO AQUI
-
-    // ❌ Ignora qualquer número que não seja o seu
-    if (telefone !== numeroAutorizado) {
-      return;
-    }
     console.log("Aguardando nova mensagem");
     // ✔️ Processa com a IA
     try {

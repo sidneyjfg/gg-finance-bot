@@ -27,28 +27,40 @@ export function startWhatsAppBot() {
   });
 
   client.on("ready", async () => {
-    logger.info("✅ WhatsApp conectado e pronto!");
+    logger.info("🤖 WhatsApp conectado, aguardando estabilização...");
 
-    // 🔥 PATCH GLOBAL — desativa sendSeen bugado do WhatsApp Web
     try {
       const page = (client as any).pupPage;
 
       if (!page) {
-        logger.warn("⚠️ puppeteer page não encontrada para patch sendSeen");
-        return;
+        throw new Error("Puppeteer page não encontrada");
       }
 
+      // 🔥 Aguarda o WhatsApp Web estar realmente pronto
+      await page.waitForFunction(
+        () => {
+          // @ts-ignore
+          return window.Store && window.Store.Chat && window.Store.Chat.models.length > 0;
+        },
+        { timeout: 20000 }
+      );
+
+      logger.info("✅ WhatsApp totalmente carregado (Store pronto)");
+
+      // 🛡️ Aplica o patch sendSeen depois que o Store existir
       await page.evaluate(() => {
         // @ts-ignore
-        if (window.WWebJS && window.WWebJS.sendSeen) {
+        if (window.WWebJS?.sendSeen) {
           // @ts-ignore
           window.WWebJS.sendSeen = async () => { };
         }
       });
 
       logger.info("🛡️ Patch sendSeen aplicado com sucesso");
-    } catch (err) {
-      logger.error("❌ Erro ao aplicar patch sendSeen", err);
+
+    } catch (error) {
+      logger.error("❌ Falha ao estabilizar WhatsApp Web", error);
+      process.exit(1); // 💥 NÃO deixa o sistema rodar em estado quebrado
     }
   });
 

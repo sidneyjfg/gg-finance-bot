@@ -8,6 +8,7 @@ import { EnviadorWhatsApp } from "../services/EnviadorWhatsApp";
 export const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
+    executablePath: "/usr/bin/chromium",
     headless: true,
     args: [
       "--no-sandbox",
@@ -19,6 +20,7 @@ export const client = new Client({
     ]
   }
 });
+
 
 export function startWhatsAppBot() {
   client.on("qr", (qr) => {

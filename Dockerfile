@@ -1,11 +1,9 @@
 # ---------- STAGE 1: Build ----------
-FROM node:18-bullseye AS builder
+FROM node:18-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-  openssl \
-  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 RUN npm install
@@ -20,32 +18,32 @@ RUN npm run build
 
 
 # ---------- STAGE 2: Runtime ----------
-FROM node:18-bullseye
+FROM node:18-slim
 
 WORKDIR /app
 
+# Puppeteer deps mínimos
 RUN apt-get update && apt-get install -y \
-  chromium \
+  ca-certificates \
   fonts-liberation \
   libnss3 \
+  libatk1.0-0 \
   libatk-bridge2.0-0 \
-  libgtk-3-0 \
-  libx11-xcb1 \
+  libcups2 \
+  libdrm2 \
+  libgbm1 \
+  libasound2 \
+  libxkbcommon0 \
   libxcomposite1 \
   libxdamage1 \
   libxrandr2 \
-  libgbm1 \
-  libasound2 \
-  libatk1.0-0 \
-  libcups2 \
-  libdrm2 \
-  libxkbcommon0 \
+  libx11-xcb1 \
+  libgtk-3-0 \
   xdg-utils \
-  ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV NODE_ENV=production
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
 
 COPY package*.json ./
 RUN npm install --omit=dev

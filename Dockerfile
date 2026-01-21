@@ -1,6 +1,5 @@
-# ---------- STAGE 1: Build ----------
+# ---------- STAGE 1 ----------
 FROM node:18-slim AS builder
-
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
@@ -17,9 +16,8 @@ RUN npx prisma generate
 RUN npm run build
 
 
-# ---------- STAGE 2: Runtime ----------
+# ---------- STAGE 2 ----------
 FROM node:18-slim
-
 WORKDIR /app
 
 # Puppeteer deps mínimos
@@ -42,8 +40,8 @@ RUN apt-get update && apt-get install -y \
   xdg-utils \
   && rm -rf /var/lib/apt/lists/*
 
-ENV NODE_ENV=production
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
+# 🔥 FORÇA Puppeteer a baixar o Chromium
+ENV PUPPETEER_SKIP_DOWNLOAD=false
 
 COPY package*.json ./
 RUN npm install --omit=dev

@@ -2,27 +2,48 @@ import Fastify from "fastify";
 import { authMiddleware } from "./middlewares/auth.middleware";
 import { logger } from "./utils/logger";
 import { env } from "./config/env";
+
 import { appRoutes } from "./routes";
 import { startWhatsAppBot } from "./whatsapp/bot";
+import { iniciarSchedulers } from "./infra/scheduler";
+
+import { connectDatabase } from "./infra/prisma";
 
 async function bootstrap() {
-  const app = Fastify();
+  try {
+    const app = Fastify();
 
-  // Middlewares globais
-  app.addHook("onRequest", authMiddleware);
-  startWhatsAppBot();
-  // Carrega todas as rotas em 1 lugar ✅
-  await appRoutes(app);
+    logger.info("🚀 Iniciando aplicação...");
 
-  const PORT = env.PORT;
+    // 1️⃣ Middlewares globais
+    app.addHook("onRequest", authMiddleware);
 
-  app.listen({ port: PORT, host: "0.0.0.0" }, (err) => {
-    if (err) {
-      logger.error("Erro ao subir servidor", err);
-      process.exit(1);
-    }
-    logger.info(`Servidor rodando em http://localhost:${PORT} 🚀`);
-  });
+    // 2️⃣ Conectar no banco
+    logger.info("🔌 Conectando ao banco...");
+    await connectDatabase();
+
+    // 3️⃣ Registrar rotas
+    logger.info("🛣️ Registrando rotas...");
+    await appRoutes(app);
+
+    // 4️⃣ Iniciar schedulers
+    logger.info("⏰ Iniciando schedulers...");
+    await iniciarSchedulers();
+
+    // 5️⃣ Iniciar WhatsApp Bot
+    logger.info("🤖 Iniciando WhatsApp bot...");
+    await startWhatsAppBot();
+
+    // 6️⃣ Subir servidor SOMENTE se tudo estiver ok
+    const PORT = env.PORT;
+
+    await app.listen({ port: PORT, host: "0.0.0.0" });
+
+    logger.info(`✅ Servidor rodando em http://localhost:${PORT}`);
+  } catch (error) {
+    logger.error("❌ Falha crítica ao iniciar aplicação", error);
+    process.exit(1);
+  }
 }
 
 bootstrap();

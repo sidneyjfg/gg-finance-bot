@@ -13,10 +13,13 @@ export const client = new Client({
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
+      "--disable-dev-shm-usage",   // 🔥 CRÍTICO
       "--disable-gpu",
+      "--disable-software-rasterizer",
       "--no-zygote",
-      "--single-process"
+      "--single-process",
+      "--disable-features=site-per-process",
+      "--disable-extensions"
     ]
   }
 });

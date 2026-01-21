@@ -34,7 +34,7 @@ export function startWhatsAppBot() {
       const page = (client as any).pupPage;
 
       if (!page) {
-        logger.warn("⚠️ puppeteer page não encontrada para patch sendSeen");
+        logger.warn("⚠️ puppeteer page não encontrada  para patch sendSeen");
         return;
       }
 
@@ -64,8 +64,21 @@ export function startWhatsAppBot() {
     const mensagem = msg.body.trim();
     const chat = await msg.getChat();
 
-    // 🔑 IDENTIDADE ÚNICA
-    const userId = chat.id._serialized; // @lid ou @c.us
+    // 🔒 número autorizado (SEM @c.us)
+    const numeroAutorizado = "558598330231";
+
+    // 📞 extrai telefone do remetente
+    const telefone = msg.from.replace("@c.us", "");
+
+    // 🚫 bloqueia qualquer outro número
+    if (telefone !== numeroAutorizado) {
+      console.log(`🚫 Ignorando número não autorizado: ${telefone}`);
+      return;
+    }
+
+    // 🔑 IDENTIDADE ÚNICA (agora só chega aqui se for autorizado)
+    const userId = chat.id._serialized;
+
     logger.info(`\nuserId: ${userId}\nmensagem: ${mensagem}`);
     console.log(`📩 ${userId}: ${mensagem}`);
 

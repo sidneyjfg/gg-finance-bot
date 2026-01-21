@@ -48,8 +48,28 @@ export class LembreteHandler {
       return this.salvarCompletoComParse(telefone, usuarioId, mensagem, data, valor);
     }
 
-    // Mensagem + valor, mas sem data → pedir só a data
+    // Mensagem + valor, mas sem data → antes de perguntar, tenta extrair do texto original
     if (mensagem && valor !== null && !data) {
+      const textoParaParse = textoOriginal ?? mensagem;
+
+      const dataDireta = parseDataPtBr(textoParaParse);
+      if (dataDireta) {
+        await LembreteRepository.criar({
+          usuarioId,
+          mensagem,
+          dataAlvo: dataDireta,
+          valor
+        });
+
+        await ContextoRepository.limpar(telefone);
+
+        return EnviadorWhatsApp.enviar(
+          telefone,
+          `🔔 Vou te lembrar: *${mensagem}* em *${dataDireta.toLocaleDateString("pt-BR")}*`
+        );
+      }
+
+      // se não achou data no texto, aí sim pergunta
       await ContextoRepository.salvar(telefone, {
         etapa: "criando_lembrete_data",
         dados: { mensagem, valor }
@@ -62,17 +82,36 @@ export class LembreteHandler {
     }
 
     // Mensagem + data, mas sem valor → pedir valor
-    if (mensagem && data && valor === null) {
-      const apenasDia = extrairDiaSimples(data);
+    if (mensagem && valor !== null && !data) {
+      const textoParaParse = (textoOriginal ?? mensagem).toLowerCase().trim();
 
+      // ✅ tenta extrair data do texto original antes de perguntar
+      const dataDireta = parseDataPtBr(textoParaParse);
+      if (dataDireta) {
+        await LembreteRepository.criar({
+          usuarioId,
+          mensagem,
+          dataAlvo: dataDireta,
+          valor
+        });
+
+        await ContextoRepository.limpar(telefone);
+
+        return EnviadorWhatsApp.enviar(
+          telefone,
+          `🔔 Vou te lembrar: *${mensagem}* em *${dataDireta.toLocaleDateString("pt-BR")}*`
+        );
+      }
+
+      // se não achou, aí sim pergunta
       await ContextoRepository.salvar(telefone, {
-        etapa: "criando_lembrete_valor",
-        dados: { mensagem, data, dia: apenasDia }
+        etapa: "criando_lembrete_data",
+        dados: { mensagem, valor }
       });
 
       return EnviadorWhatsApp.enviar(
         telefone,
-        "💰 Qual o valor desse lembrete?"
+        "📅 Falta a data. Quando devo te lembrar disso?"
       );
     }
 
@@ -251,8 +290,6 @@ export class LembreteHandler {
       `🔔 Lembrete criado para ${data.toLocaleDateString("pt-BR")}!`
     );
   }
-
-
 
   static async salvarValor(telefone: string, valorMsg: string, usuarioId: string) {
     const ctx = await ContextoRepository.obter(telefone);

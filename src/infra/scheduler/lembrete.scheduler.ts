@@ -18,7 +18,7 @@ export class LembreteScheduler {
 
       await EnviadorWhatsApp.enviar(
         lembrete.usuario.telefone,
-        `⏰ *Lembrete*\n\n${lembrete.mensagem}${
+        `⏰ *Lembrete!*\n\n${lembrete.mensagem}${
           lembrete.valor
             ? `\n💰 Valor: R$ ${lembrete.valor.toFixed(2)}`
             : ""

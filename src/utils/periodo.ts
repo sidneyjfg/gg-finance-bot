@@ -39,6 +39,13 @@ export function extrairMesEAno(mensagem: string): { mes: number; ano: number } |
     return { mes: dt.getMonth() + 1, ano: dt.getFullYear() };
   }
 
+  // ✅ próximo mês (NOVO)
+  if (/\bproxim[oa]\s+mes\b/.test(txt)) {
+    const dt = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+    return { mes: dt.getMonth() + 1, ano: dt.getFullYear() };
+  }
+
+
   // ✅ mês atual (agora sim)
   if (
     /\b(esse|este|neste|desse|deste|dessa)\s+mes\b/.test(txt) ||
@@ -46,6 +53,13 @@ export function extrairMesEAno(mensagem: string): { mes: number; ano: number } |
   ) {
     return { mes: hoje.getMonth() + 1, ano: hoje.getFullYear() };
   }
+
+  // ✅ "02/2026" ou "2/2026" ou "02-2026" (NOVO)
+  const mmAaaa = txt.match(/\b(0?[1-9]|1[0-2])\s*[\/\-]\s*(20\d{2})\b/);
+  if (mmAaaa) {
+    return { mes: Number(mmAaaa[1]), ano: Number(mmAaaa[2]) };
+  }
+
 
   // ✅ "mês 11" / "mes 11" (e aceita "mes11")
   const matchNumero = txt.match(/\bmes\s*(\d{1,2})\b/);

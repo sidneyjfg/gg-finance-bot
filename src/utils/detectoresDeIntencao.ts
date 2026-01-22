@@ -57,7 +57,7 @@ export const detectores: Detector[] = [
     executar: async ({ userId, usuarioId, mensagem }) => {
       const mesAno = extrairMesEAno(mensagem)!;
       const { ReceitasPorMesHandler } = await require(
-        "../services/handlers/ReceitasPorMesHandler"
+        "../services/handlers/financeiro/ReceitasPorMesHandler"
       );
 
       await ReceitasPorMesHandler.executar(
@@ -81,7 +81,7 @@ export const detectores: Detector[] = [
 
     executar: async ({ userId, usuarioId }) => {
       const { ListarDespesasHandler } = await require(
-        "../services/handlers/ListarDespesaHandler"
+        "../services/handlers/financeiro/ListarDespesaHandler"
       );
 
       await ListarDespesasHandler.executar(userId, usuarioId, false);
@@ -99,12 +99,38 @@ export const detectores: Detector[] = [
 
     executar: async ({ userId, usuarioId }) => {
       const { ListarReceitasHandler } = await require(
-        "../services/handlers/ListarReceitaHandler"
+        "../services/handlers/financeiro/ListarReceitaHandler"
       );
 
       await ListarReceitasHandler.executar(userId, usuarioId, false);
     }
   },
+
+  // ===============================
+  // 📌 LEMBRETES POR MÊS
+  // ===============================
+  {
+    nome: "lembretes_por_mes",
+    match: ({ mensagemNormalizada, mensagem }) =>
+      /\b(lembrete|lembretes|avisos|agenda|recordatorio|recordatorios)\b/.test(mensagemNormalizada) &&
+      !!extrairMesEAno(mensagem),
+
+    executar: async ({ userId, usuarioId, mensagem }) => {
+      const mesAno = extrairMesEAno(mensagem)!;
+
+      const { ListarLembretesHandler } = require(
+        "../services/handlers/lembrete/ListarLembretesHandler"
+      );
+
+      await ListarLembretesHandler.executar(userId, usuarioId, {
+        porMes: true,
+        mes: mesAno.mes,
+        ano: mesAno.ano,
+      }
+      );
+    }
+  },
+
   // ===============================
   // 📌 LISTAR LEMBRETES (GERAL)
   // ===============================
@@ -117,12 +143,12 @@ export const detectores: Detector[] = [
 
     executar: async ({ userId, usuarioId }) => {
       const { ListarLembretesHandler } = require(
-        "../services/handlers/ListarLembretesHandler"
+        "../services/handlers/lembrete/ListarLembretesHandler"
       );
 
       await ListarLembretesHandler.executar(
         userId,
-        usuarioId
+        usuarioId,
       );
     }
   },

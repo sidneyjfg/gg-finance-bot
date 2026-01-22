@@ -35,11 +35,14 @@ export class LembreteRepository {
   }
 
   static async listarFuturos(usuarioId: string): Promise<Lembrete[]> {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
     return prisma.lembrete.findMany({
       where: {
         usuarioId,
         enviado: false,
-        dataAlvo: { gte: new Date() },
+        dataAlvo: { gte: hoje },
       },
       orderBy: { dataAlvo: "asc" },
     });

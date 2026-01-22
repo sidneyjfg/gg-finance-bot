@@ -270,12 +270,12 @@ export class AssistenteFinanceiro {
           await EnviadorWhatsApp.enviar(
             userId,
             "📌 *Como posso te ajudar?*\n\n" +
-              "• Registrar *despesa*\n" +
-              "• Registrar *receita*\n" +
-              "• Ver *saldo*\n" +
-              "• Ver *gastos por categoria*\n" +
-              "• Criar *lembrete*\n" +
-              "• Criar *categoria*"
+            "• Registrar *despesa*\n" +
+            "• Registrar *receita*\n" +
+            "• Ver *saldo*\n" +
+            "• Ver *gastos por categoria*\n" +
+            "• Criar *lembrete*\n" +
+            "• Criar *categoria*"
           );
           break;
       }

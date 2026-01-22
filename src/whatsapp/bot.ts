@@ -88,6 +88,12 @@ export function startWhatsAppBot() {
       const mensagemErro = error?.message || "";
       const status = error?.status || error?.code;
 
+      // ✅ LOG DO ERRO REAL (isso é o principal)
+      logger.error(
+        `❌ Erro ao processar mensagem | userId=${userId} | mensagem="${mensagem}" | status=${status} | name=${error?.name} | msg="${mensagemErro}"`
+      );
+      console.error("[ERRO OBJETO]", error);
+
       if (status === 429 || mensagemErro.includes("429")) {
         await EnviadorWhatsApp.enviar(
           userId,
@@ -116,6 +122,7 @@ export function startWhatsAppBot() {
         "❌ Ocorreu um erro inesperado.\nTente novamente mais tarde."
       );
     }
+
   });
 
   client.initialize();

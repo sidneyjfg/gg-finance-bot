@@ -1,7 +1,5 @@
-// src/services/handlers/ListarDespesasHandler.ts
 import { TransacaoRepository } from "../../../repositories/transacao.repository";
 import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
-import { Categoria } from "@prisma/client";
 
 type TransacaoComCategoria = Awaited<
   ReturnType<typeof TransacaoRepository.listarDetalhadoPorTipo>

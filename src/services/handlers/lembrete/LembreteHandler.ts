@@ -1,7 +1,8 @@
 import { LembreteRepository } from "../../../repositories/lembrete.repository";
 import { ContextoRepository } from "../../../repositories/contexto.repository";
 import { EnviadorWhatsApp } from "../../EnviadorWhatsApp";
-import { parseDataPtBr } from "../../../utils/parseDatabr";
+import { extrairDiaSimples, normalizarMes, parseDataPtBr } from "../../../utils/parseDatabr";
+import { extrairMesEAno } from "../../../utils/periodo";
 
 export class LembreteHandler {
 
@@ -34,7 +35,7 @@ export class LembreteHandler {
 
 
   static async iniciar(
-    telefone: string,
+    telefone: string, //telefone mas recebe o userId da tabela
     usuarioId: string,
     mensagem: string | null,
     data: string | null,
@@ -159,41 +160,76 @@ export class LembreteHandler {
 
         await ContextoRepository.limpar(telefone);
 
-function textoTemAno(t?: string) {
-  return !!t && /\b\d{4}\b/.test(t);
-}
+        return EnviadorWhatsApp.enviar(
+          telefone,
+          `🔔 Vou te lembrar: *${mensagem}* em *${dataInferida.toLocaleDateString("pt-BR")}*`
+        );
+      }
 
-function textoTemReferenciaRelativa(t?: string) {
-  if (!t) return false;
-  return /\b(hoje|amanh[aã]|m[eê]s que vem|proximo mes|pr[oó]ximo m[eê]s)\b/i.test(t);
-}
+      // só agora pergunta
+      await ContextoRepository.salvar(telefone, {
+        etapa: "criando_lembrete_data",
+        dados: { mensagem, valor }
+      });
 
-function textoIndicaDinheiro(t?: string) {
-  if (!t) return false;
-  return /\b(r\$|reais|conto|pagar|pix|transferir|cobrar)\b/i.test(t);
-}
+      return EnviadorWhatsApp.enviar(
+        telefone,
+        "📅 Quando devo te lembrar?"
+      );
+    }
 
-/* =======================
-   Handler
-======================= */
+    // Só data → pedir texto
+    if (data && !mensagem) {
+      await ContextoRepository.salvar(telefone, {
+        etapa: "criando_lembrete_texto",
+        dados: { data, valor }
+      });
 
-export class LembreteHandler {
+      return EnviadorWhatsApp.enviar(
+        telefone,
+        "💭 O que você quer que eu te lembre?"
+      );
+    }
 
-  /* =======================
-     CRIAÇÃO CENTRAL
-  ======================= */
-  private static async criar(
+    // Nada ainda → começar pedindo o texto
+    await ContextoRepository.salvar(telefone, {
+      etapa: "criando_lembrete_texto"
+    });
+
+    return EnviadorWhatsApp.enviar(
+      telefone,
+      "💭 O que você quer que eu te lembre?"
+    );
+  }
+
+
+  private static async salvarCompletoComParse(
     telefone: string,
     usuarioId: string,
     mensagem: string,
-    data: Date,
+    dataStr: string,
     valor: number | null
   ) {
+    // 🔑 AGORA usa o parser inteligente (pt-BR ou ISO)
+    const data = this.parseDataInteligente(dataStr);
+
+    if (!data) {
+      await ContextoRepository.salvar(telefone, {
+        etapa: "criando_lembrete_data",
+        dados: { mensagem, valor }
+      });
+
+      return EnviadorWhatsApp.enviar(
+        telefone,
+        "❌ Não consegui entender a data."
+      );
+    }
+
     await LembreteRepository.criar({
       usuarioId,
       mensagem,
       dataAlvo: data,
-      valor: valor ?? null
+      valor
     });
 
     await ContextoRepository.limpar(telefone);
@@ -204,122 +240,189 @@ export class LembreteHandler {
     );
   }
 
-  /* =======================
-     INÍCIO
-  ======================= */
-  static async iniciar(
-    telefone: string,
-    usuarioId: string,
-    mensagem: string | null,
-    _dataIA: string | null,
-    valor: number | null = null,
-    textoOriginal?: string
-  ) {
+  static async salvarTexto(telefone: string, texto: string) {
+    await ContextoRepository.atualizarDados(telefone, { texto });
+
+    await ContextoRepository.salvar(telefone, {
+      etapa: "criando_lembrete_data",
+      dados: { texto }
+    });
+
+    return EnviadorWhatsApp.enviar(
+      telefone,
+      "📆 Quando devo te lembrar? (Ex: 20/11)"
+    );
+  }
+
+
+  static async salvarData(telefone: string, dataMsg: string, usuarioId: string) {
+    const ctx = await ContextoRepository.obter(telefone);
+    const dados = ctx?.dados as {
+      mensagem?: string;
+      texto?: string;
+      valor?: number | null;
+    };
+
+    const mensagem = dados?.mensagem ?? dados?.texto ?? null;
+    const valor = dados?.valor ?? null;
+
     if (!mensagem) {
-      await ContextoRepository.salvar(telefone, { etapa: "criando_lembrete_texto" });
-      return EnviadorWhatsApp.enviar(telefone, "💭 O que você quer que eu te lembre?");
+      await ContextoRepository.limpar(telefone);
+      return EnviadorWhatsApp.enviar(telefone, "⚠️ Não encontrei o texto do lembrete.");
     }
 
-    const texto = textoOriginal ?? mensagem;
-    const dataParse = parseDataPtBr(texto);
-
-    // 🧠 Se conseguiu extrair uma data
-    if (dataParse) {
-      const temAno = textoTemAno(texto);
-      const temRelativo = textoTemReferenciaRelativa(texto);
-
-      // 📅 Falta ano?
-      if (!temAno && !temRelativo) {
-        await ContextoRepository.salvar(telefone, {
-          etapa: "criando_lembrete_data",
-          dados: { mensagem, valor, dataStr: texto }
-        });
-
-        return EnviadorWhatsApp.enviar(telefone, "📅 De qual ano?");
-      }
-
-      // 💰 Falta valor?
-      if (textoIndicaDinheiro(texto) && valor == null) {
-        await ContextoRepository.salvar(telefone, {
-          etapa: "criando_lembrete_valor",
-          dados: { mensagem, dataStr: texto }
-        });
-
-        return EnviadorWhatsApp.enviar(telefone, "💰 Qual o valor?");
-      }
-
-      return this.criar(telefone, usuarioId, mensagem, dataParse, valor);
+    const data = this.parseDataInteligente(dataMsg);
+    if (!data) {
+      return EnviadorWhatsApp.enviar(telefone, "❌ Data inválida.");
     }
 
-    // ❌ Nenhuma data detectada
+    await LembreteRepository.criar({
+      usuarioId,
+      mensagem,
+      dataAlvo: data,
+      valor
+    });
+
+    await ContextoRepository.limpar(telefone);
+
+    return EnviadorWhatsApp.enviar(
+      telefone,
+      `🔔 Lembrete criado para ${data.toLocaleDateString("pt-BR")}!`
+    );
+  }
+
+  static async salvarValor(telefone: string, valorMsg: string, usuarioId: string) {
+    const ctx = await ContextoRepository.obter(telefone);
+    const dados = ctx?.dados as {
+      mensagem?: string;
+      texto?: string;
+      data?: string;
+      dia?: number;
+    };
+
+    const valor = Number(valorMsg.replace(/[^\d]/g, ""));
+    if (isNaN(valor) || valor <= 0) {
+      return EnviadorWhatsApp.enviar(telefone, "❌ Valor inválido.");
+    }
+
+    const mensagem = dados?.mensagem ?? dados?.texto;
+    if (!mensagem) {
+      return EnviadorWhatsApp.enviar(telefone, "⚠️ Texto do lembrete não encontrado.");
+    }
+
+    // Se já tinha data completa
+    if (dados?.data) {
+      const data = this.parseDataInteligente(dados.data);
+      if (data) {
+        await LembreteRepository.criar({
+          usuarioId,
+          mensagem,
+          dataAlvo: data,
+          valor
+        });
+
+        await ContextoRepository.limpar(telefone);
+
+        return EnviadorWhatsApp.enviar(telefone, "🔔 Lembrete criado!");
+      }
+    }
+
+    // Se só tinha dia → pedir mês
+    if (dados?.dia) {
+      await ContextoRepository.salvar(telefone, {
+        etapa: "complementar_mes_lembrete",
+        dados: { mensagem, dia: dados.dia, valor }
+      });
+
+      return EnviadorWhatsApp.enviar(
+        telefone,
+        `📅 Dia *${dados.dia}* de qual mês?`
+      );
+    }
+
+    // fallback
     await ContextoRepository.salvar(telefone, {
       etapa: "criando_lembrete_data",
       dados: { mensagem, valor }
     });
 
-    return EnviadorWhatsApp.enviar(telefone, "📅 Quando devo te lembrar?");
+    return EnviadorWhatsApp.enviar(
+      telefone,
+      "📅 Informe a data do lembrete."
+    );
   }
 
-  static async salvarValor(telefone: string, valorMsg: string, usuarioId: string) {
-    const ctx = await ContextoRepository.obter(telefone);
 
+
+  static async salvarMes(telefone: string, mesMsg: string, usuarioId: string) {
+    const ctx = await ContextoRepository.obter(telefone);
     const dados = ctx?.dados as {
-      mensagem: string;
+      dia?: number;
+      mensagem?: string;
       valor?: number | null;
-      dataStr?: string;
     };
 
-    if (!dados?.mensagem) {
+    if (!dados?.dia || !dados?.mensagem) {
       await ContextoRepository.limpar(telefone);
-      return EnviadorWhatsApp.enviar(telefone, "⚠️ Lembrete perdido. Tente novamente.");
+      return EnviadorWhatsApp.enviar(telefone, "⚠️ Não encontrei o lembrete anterior.");
     }
 
-    const texto = dados.dataStr ? `${dados.dataStr} ${dataMsg}` : dataMsg;
-    const data = parseDataPtBr(texto);
+    const { dia, mensagem, valor } = dados;
 
-    if (!data) {
-      return EnviadorWhatsApp.enviar(telefone, "❌ Não entendi a data.");
-    }
-
-    // 💰 Falta valor?
-    if (textoIndicaDinheiro(texto) && dados.valor == null) {
-      await ContextoRepository.salvar(telefone, {
-        etapa: "criando_lembrete_valor",
-        dados: { mensagem: dados.mensagem, dataStr: texto }
+    const dataCompleta = this.parseDataInteligente(mesMsg);
+    if (dataCompleta) {
+      await LembreteRepository.criar({
+        usuarioId,
+        mensagem,
+        dataAlvo: dataCompleta,
+        valor: valor ?? null
       });
 
-      return EnviadorWhatsApp.enviar(telefone, "💰 Qual o valor?");
-    }
-
-    return this.criar(telefone, usuarioId, dados.mensagem, data, dados.valor ?? null);
-  }
-
-  /* =======================
-     RECEBE VALOR
-  ======================= */
-  static async salvarValor(telefone: string, valorMsg: string, usuarioId: string) {
-    const ctx = await ContextoRepository.obter(telefone);
-
-    const dados = ctx?.dados as {
-      mensagem: string;
-      dataStr?: string;
-    };
-
-    if (!dados?.mensagem || !dados?.dataStr) {
       await ContextoRepository.limpar(telefone);
-      return EnviadorWhatsApp.enviar(telefone, "❌ Data perdida. Comece novamente.");
+
+      return EnviadorWhatsApp.enviar(
+        telefone,
+        `🔔 Lembrete criado para ${dataCompleta.toLocaleDateString("pt-BR")}!`
+      );
     }
 
-    const valor = Number(valorMsg.replace(/[^\d]/g, ""));
-    if (!valor || valor <= 0) {
-      return EnviadorWhatsApp.enviar(telefone, "❌ Valor inválido.");
+    const mesAno = extrairMesEAno(mesMsg);
+
+    let mesIndex: number | null = null;
+    let anoFinal: number;
+
+    if (mesAno) {
+      mesIndex = mesAno.mes - 1;
+      // 🔑 REGRA CENTRAL
+      anoFinal = mesAno.ano ?? new Date().getFullYear();
+    } else {
+      mesIndex = normalizarMes(mesMsg);
+      if (mesIndex === null) {
+        return EnviadorWhatsApp.enviar(
+          telefone,
+          "❌ Não entendi o mês. Ex: *este mês*, *novembro*, *mês que vem*."
+        );
+      }
+
+      // 🔑 REGRA CENTRAL
+      anoFinal = new Date().getFullYear();
     }
 
-    const data = parseDataPtBr(dados.dataStr);
-    if (!data) {
-      return EnviadorWhatsApp.enviar(telefone, "❌ Não entendi a data.");
-    }
+    const dataFinal = new Date(anoFinal, mesIndex, dia);
 
-    return this.criar(telefone, usuarioId, dados.mensagem, data, valor);
+    await LembreteRepository.criar({
+      usuarioId,
+      mensagem,
+      dataAlvo: dataFinal,
+      valor: valor ?? null
+    });
+
+    await ContextoRepository.limpar(telefone);
+
+    return EnviadorWhatsApp.enviar(
+      telefone,
+      `🔔 Lembrete criado para ${dataFinal.toLocaleDateString("pt-BR")}!`
+    );
   }
+
 }

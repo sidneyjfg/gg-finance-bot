@@ -34,7 +34,7 @@ export function startWhatsAppBot() {
       const page = (client as any).pupPage;
 
       if (!page) {
-        logger.warn("⚠️ puppeteer page não encontrada  para patch sendSeen");
+        logger.warn("⚠️ puppeteer page não encontrada para patch sendSeen");
         return;
       }
 
@@ -63,21 +63,8 @@ export function startWhatsAppBot() {
     const mensagem = msg.body.trim();
     const chat = await msg.getChat();
 
-    // 🔒 número autorizado (SEM @c.us)
-    const numeroAutorizado = "558598330231";
-
-    // 📞 extrai telefone do remetente
-    const telefone = msg.from.replace("@c.us", "");
-
-    // 🚫 bloqueia qualquer outro número
-    if (telefone !== numeroAutorizado) {
-      console.log(`🚫 Ignorando número não autorizado: ${telefone}`);
-      return;
-    }
-
-    // 🔑 IDENTIDADE ÚNICA (agora só chega aqui se for autorizado)
-    const userId = chat.id._serialized;
-
+    // 🔑 IDENTIDADE ÚNICA
+    const userId = chat.id._serialized; // @lid ou @c.us
     logger.info(`\nuserId: ${userId}\nmensagem: ${mensagem}`);
     console.log(`📩 ${userId}: ${mensagem}`);
 
@@ -86,12 +73,6 @@ export function startWhatsAppBot() {
     } catch (error: any) {
       const mensagemErro = error?.message || "";
       const status = error?.status || error?.code;
-
-      // ✅ LOG DO ERRO REAL (isso é o principal)
-      logger.error(
-        `❌ Erro ao processar mensagem | userId=${userId} | mensagem="${mensagem}" | status=${status} | name=${error?.name} | msg="${mensagemErro}"`
-      );
-      console.error("[ERRO OBJETO]", error);
 
       if (status === 429 || mensagemErro.includes("429")) {
         await EnviadorWhatsApp.enviar(
@@ -121,7 +102,6 @@ export function startWhatsAppBot() {
         "❌ Ocorreu um erro inesperado.\nTente novamente mais tarde."
       );
     }
-
   });
 
   client.initialize();

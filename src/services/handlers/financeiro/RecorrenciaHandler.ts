@@ -28,12 +28,9 @@ function formatarDinheiro(valor: number) {
 }
 
 export class RecorrenciaHandler {
-  /**
-   * 1) Inicia o fluxo (salva no contexto e pede confirmação)
-   */
+
   static async iniciarCriacao(
     telefone: string,
-    usuarioId: string,
     descricao: string | null,
     valor: number | null,
     frequencia: Frequencia | null,
@@ -73,7 +70,7 @@ export class RecorrenciaHandler {
       await ContextoRepository.definir(telefone, "informar_valor_recorrencia", {
         // guarda tudo que já temos, pra próxima msg preencher só o valor
         descricao,
-        frequencia,
+        frequencia, 
         tipo: tipoFinal,
         regraMensal: regraFinal,
         diaDoMes: diaFinal,
@@ -171,20 +168,17 @@ export class RecorrenciaHandler {
     return EnviadorWhatsApp.enviar(telefone, resumo);
   }
 
-  /**
-   * 2) Confirmação (Sim/Não) usando etapa do Contexto
-   */
   static async confirmarCriacao(
     telefone: string,
     usuarioId: string,
     mensagem: string,
     dados: Record<string, any>
   ) {
-    if (ehNao(mensagem)) {
+    if (ehNao(mensagem)) {  
       await ContextoRepository.limpar(telefone);
       return EnviadorWhatsApp.enviar(telefone, "Tranquilo — cancelei a criação da recorrência ✅");
     }
-
+'   '
     if (!ehSim(mensagem)) {
       return EnviadorWhatsApp.enviar(telefone, "Só pra confirmar: responde com *Sim* ou *Não* 🙂");
     }
@@ -211,9 +205,6 @@ export class RecorrenciaHandler {
     });
   }
 
-  /**
-   * 3) Criação real da recorrência (após confirmação)
-   */
   static async criar(
     telefone: string,
     usuarioId: string,
@@ -252,7 +243,7 @@ export class RecorrenciaHandler {
         usuarioId,
         descricao,
         valor,
-        tipo, // ✅ agora pode ser receita OU despesa
+        tipo, 
         data: new Date(),
         dataAgendada: proximaCobranca,
         recorrente: true,
@@ -261,7 +252,7 @@ export class RecorrenciaHandler {
     });
 
     await prisma.recorrencia.create({
-      data: {
+      data: { 
         usuarioId,
         transacaoId: transacao.id,
         frequencia,
@@ -302,9 +293,6 @@ export class RecorrenciaHandler {
       .replace(/\s+/g, "")
       .replace(/reais|real|conto|contos/g, "");
 
-    // se tiver "3.200,50" -> "3200.50"
-    // remove pontos de milhar e troca vírgula por ponto
-    // cuidado: se o usuário mandar "160.50" já tá ok
     if (t.includes(",") && t.includes(".")) {
       t = t.replace(/\./g, "").replace(",", ".");
     } else if (t.includes(",")) {
@@ -320,7 +308,6 @@ export class RecorrenciaHandler {
 
   static async salvarValor(
     telefone: string,
-    usuarioId: string,
     mensagem: string,
     dados: Record<string, any>
   ) {
@@ -379,5 +366,3 @@ export class RecorrenciaHandler {
     return data.toLocaleDateString("pt-BR");
   }
 }
-
-

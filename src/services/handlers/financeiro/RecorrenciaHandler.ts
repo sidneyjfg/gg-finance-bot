@@ -31,6 +31,7 @@ export class RecorrenciaHandler {
 
   static async iniciarCriacao(
     telefone: string,
+    usuarioId: string,
     descricao: string | null,
     valor: number | null,
     frequencia: Frequencia | null,
@@ -308,6 +309,7 @@ export class RecorrenciaHandler {
 
   static async salvarValor(
     telefone: string,
+    usuarioId: string,
     mensagem: string,
     dados: Record<string, any>
   ) {

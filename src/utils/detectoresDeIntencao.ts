@@ -137,7 +137,9 @@ export const detectores: Detector[] = [
     match: ({ mensagemNormalizada }) =>
       /\b(despesas|gastos)\b/.test(mensagemNormalizada) &&
       !/\bcategoria\b/.test(mensagemNormalizada) &&
-      /(ver|listar|mostrar|visualizar)?/.test(mensagemNormalizada),
+      /\b(ver|listar|mostrar|visualizar|quais|meus|minhas|exibir|exiba)\b/.test(
+        mensagemNormalizada
+      ),
 
     executar: async ({ userId, usuarioId }) => {
       const { ListarDespesasHandler } = await require(
@@ -176,9 +178,18 @@ export const detectores: Detector[] = [
   // ===============================
   {
     nome: "listar_receitas",
-    match: ({ mensagemNormalizada }) =>
-      /\b(receitas|entradas)\b/.test(mensagemNormalizada) &&
-      /(ver|listar|mostrar|visualizar)?/.test(mensagemNormalizada),
+    match: ({ mensagemNormalizada, mensagem }) => {
+      const temPalavraReceita = /\b(receita|receitas|entrada|entradas)\b/.test(
+        mensagemNormalizada
+      )
+      const mesAno = extrairMesEAno(mensagem);
+      if (!temPalavraReceita || mesAno) return false;
+
+      const pediuListagem = /\b(quais|minhas|meus|listar|ver|mostrar|exibir|tem|tenho)\b/.test(
+        mensagemNormalizada
+      );
+      return pediuListagem;
+    },
 
     executar: async ({ userId, usuarioId }) => {
       const { ListarReceitasHandler } = await require(
@@ -194,10 +205,22 @@ export const detectores: Detector[] = [
   // ===============================
   {
     nome: "lembretes_por_mes",
-    match: ({ mensagemNormalizada, mensagem }) =>
-      /\b(lembrete|lembretes|avisos|agenda|recordatorio|recordatorios)\b/.test(
+    match: ({ mensagemNormalizada, mensagem }) => {
+      const temPalavraLembrete =
+        /\b(lembrete|lembretes|avisos|agenda|recordatorio|recordatorios|recorda)\b/.test(
+          mensagemNormalizada
+        );
+      const mesAno = extrairMesEAno(mensagem);
+      if (!temPalavraLembrete || !mesAno) return false;
+
+      const pediuListagem = /\b(quais|meus|minhas|listar|ver|mostrar|exibir|tem|tenho)\b/.test(
         mensagemNormalizada
-      ) && !!extrairMesEAno(mensagem),
+      ) ||
+        /\b(do|da|de)\s+(mes|m[eê]s|janeliro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/.test(
+          mensagemNormalizada
+        );
+      return pediuListagem;
+    },
 
     executar: async ({ userId, usuarioId, mensagem }) => {
       const mesAno = extrairMesEAno(mensagem)!;
